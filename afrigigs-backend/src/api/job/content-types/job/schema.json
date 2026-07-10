@@ -1,0 +1,94 @@
+{
+  "kind": "collectionType",
+  "collectionName": "jobs",
+  "info": {
+    "singularName": "job",
+    "pluralName": "jobs",
+    "displayName": "Job",
+    "description": "A posted gig / job"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "richtext",
+      "required": true
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "posted_jobs"
+    },
+    "country": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::country.country",
+      "inversedBy": "jobs"
+    },
+    "target_city": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "enumeration",
+      "enum": ["LOCAL", "FOR_EVERYONE"],
+      "default": "LOCAL",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["open", "in_progress", "completed", "disputed", "cancelled"],
+      "default": "open",
+      "required": true
+    },
+    "budget_currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "budget_amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "escrow_status": {
+      "type": "enumeration",
+      "enum": ["unfunded", "funded", "held", "released", "refunded"],
+      "default": "unfunded"
+    },
+    "skills_required": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::skills-catalog.skills-catalog"
+    },
+    "bids": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::bid.bid",
+      "mappedBy": "job"
+    },
+    "escrow_transactions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::escrow-transaction.escrow-transaction",
+      "mappedBy": "job"
+    },
+    "assigned_worker": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "completed_at": {
+      "type": "datetime"
+    },
+    "completion_confirmation_deadline": {
+      "type": "datetime"
+    }
+  }
+}

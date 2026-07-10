@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_profile_certifications",
+  "info": {
+    "displayName": "Certification",
+    "icon": "award"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "issuing_body": {
+      "type": "string"
+    },
+    "issue_date": {
+      "type": "date"
+    },
+    "expiry_date": {
+      "type": "date"
+    },
+    "credential_url": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,386 @@
+Project Blueprint: Localized Pan-African Gig MarketplaceThis document outlines the end-to-end architecture, functional design, database schemas, and multi-phase implementation plan for a scalable, mobile-first marketplace tailored natively for the African economic landscape.🏛️ System OverviewThe platform operates as a secure, escrow-backed marketplace that connects independent workers with localized and international job opportunities. The system leverages cross-platform web tech for rapid iteration, backed by native mobile wrappers to access hardware location metrics and system-level push notifications.                  +-----------------------------------+
+
+                  |      React Native Wrapper App     |
+                  |  (Native GPS + Push Notifications)|
+                  +-----------------------------------+
+                                    │
+                         (Loads Webview Runtime)
+                                    ▼
+                  +-----------------------------------+
+
+                  |         Next.js Web App           |
+                  |  (Pan-African UI / UI UX Engine)  |
+                  +-----------------------------------+
+                                    │
+                        (GraphQL / REST Transactions)
+                                    ▼
+                  +-----------------------------------+
+
+                  |         Strapi CMS Engine         |
+                  |  (Business Logic & Escrow Rules)   |
+                  +-----------------------------------+
+                                    │
+                        (Relational Data Storage)
+                                    ▼
+                  +-----------------------------------+
+
+                  |           MySQL Database          |
+                  | (Financial Ledgers & Georeferences)|
+                  +-----------------------------------+
+🎨 Visual Identity & UI Style GuideThe user interface uses a high-contrast dark palette inspired by Pan-African colors. This approach maximizes readability in bright outdoor sunlight and extends battery life on modern OLED screens across low-resource areas.Primary Accent (Unity Green): #009688 — Emphasized on "Find Work" loops, call-to-actions, and positive balance items.Secondary Accent (Gold/Natural Wealth): #FFC107 — Applied to rating stars, bidding values, and premium professional indicators.Action Alert (Historical Struggle Red): #D32F2F — Applied to flags, errors, low-bids, and unverified tags.Base Backdrop (Absolute Void Black): #121212 / #1E1E1E — Primary backgrounds.🗄️ Database Schema Blueprint (Strapi & MySQL)The system manages dynamic localization and currency matching by linking user attributes directly to regional rules.                           ┌──────────────────┐
+                           │     Currency     │
+                           └────────┬─────────┘
+                                    │ 1:1
+                           ┌────────▼─────────┐
+                           │     Country      │
+                           └────────┬─────────┘
+                                    │ 1:M
+                           ┌────────▼─────────┐
+                           │    User Core     │
+                           └────────┬─────────┘
+                                    │
+         ┌──────────────────────────┴──────────────────────────┐
+         │ 1:1                                                 │ 1:1
+┌────────▼─────────┐                                  ┌────────▼─────────┐
+│ Skilled Profile  │                                  │Professional Prof.│
+└──────────────────┘                                  └──────────────────┘
+1. Currency Collection (api::currency.currency)id: Integer (Auto-increment)code: String (e.g., ZMW, NGN, KES)symbol: String (e.g., ZK, ₦, KSh)minimum_national_bid: Decimal (e.g., 50.00)2. Country Collection (api::country.country)id: Integer (Auto-increment)name: String (e.g., Zambia)iso_code: String (e.g., ZM)currency: Relation ➡️ 1:1 with api::currency.currencycities: JSON Array (e.g., ["Lusaka", "Ndola", "Kitwe"])gig_local_term_singular: String (Default: "Gig")gig_local_term_plural: String (Default: "Gigs")3. User Core Extensions (plugin::users-permissions.user)is_anonymous: Boolean (Default: false)is_verified_human: Boolean (Default: false)profile_completion_skilled: Integer (Percentage: 0-100)profile_completion_professional: Integer (Percentage: 0-100)trust_score_yes: Integer (Positive completion counters)native_last_city: String (Resolved from mobile GPS background loops)country: Relation ➡️ Many-to-One with api::country.country4. Skilled Profile Model (api::skilled-profile.skilled-profile)national_id_number: String (Required to unlock matches)skills_category: Enumeration (e.g., Manual Trades, Digital Services)skills: Many-to-Many relation ➡️ api::skills-catalog.skills-catalogdescription: Text (Optional)5. Professional Profile Model (api::professional-profile.professional-profile)resume_file: Media Linkeducation_history: JSON Blockcertifications: Component Arrayexperience_summary: Long Text⚙️ Core Engineering Workflows🛡️ Frictionless Onboarding & VerificationThe app balances frictionless access with security via a two-step validation model:[Register Account] ➡️ [Add ID & Basic Details] ➡️ [INSTANTLY BROWSE & BID (Unverified Label)]
+                                                                │
+                                                  (To remove Unverified Label)
+                                                                ▼
+                                                [Upload Scripted Video Selfie]
+Instant Onboarding: A user enters basic details, selects a skills category, adds an ID number, and links target skills. They can immediately bid on jobs.The Unverified Label: Unverified profiles display an internal caution badge: ⚠️ UNVERIFIED WORKER.Video Verification: To clear this warning label, users upload a validation clip matching criteria managed in Strapi settings:System Requirement Example: "Hold your ID next to your face, state today's date, and speak: 'I verify my profile on [Platform Name]'."📍 Native GPS & Proximity Matching EngineTo protect user safety and security, precise geometric coordinates are never exposed to other accounts.Native Querying: On native Android or iOS installs, the wrapper passes raw device coordinates to the webview window via an explicit javascript link.Reverse Resolution: The server reverse-geocodes these coordinates against the Google Geocoding API to resolve the nearest town or city name, updating native_last_city on the user record.Proximity Sorting Strategy: When an entrepreneur looks at applicants on a job, the sorting matrix resolves sorting dynamically:typescript// Sorting algorithm pattern executed within Strapi routers
+public async rankBids(jobContext, bidList) {
+  const isGlobal = jobContext.scope === "FOR_EVERYONE";
+  
+  return bidList.sort((a, b) => {
+    if (!isGlobal) {
+      // Sort by proximity match first if restricted regionally
+      const proximityA = a.user.native_last_city === jobContext.target_city ? 0 : 1;
+      const proximityB = b.user.native_last_city === jobContext.target_city ? 0 : 1;
+      if (proximityA !== proximityB) return proximityA - proximityB;
+    }
+    // Secondary sort fallbacks
+    if (b.user.trust_score_yes !== a.user.trust_score_yes) {
+      return b.user.trust_score_yes - a.user.trust_score_yes;
+    }
+    return b.user.profile_completion_skilled - a.user.profile_completion_skilled;
+  });
+}
+Use code with caution.💰 Bidding Threshold Enforcements (National vs. International)The system automatically enforces bidding limits depending on the locations of the contractor and the employer.                          🕵️ User Submits Bid
+                                   │
+                    Is the transaction international?
+                       ├── YES ──► Minimum Limit = $5.00 USD (Fixed baseline)
+                       └── NO  ──► Minimum Limit = Country Minimum (Dynamic)
+Lifecycle Validation Script (src/api/bid/content-types/bid/lifecycles.js)javascriptmodule.exports = {
+  async beforeCreate(event) {
+    const { data } = event.params;
+
+    // Fetch relational dependencies from the schema
+    const job = await strapi.entityService.findOne('api::job.job', data.job, {
+      populate: { owner: { populate: ['country'] }, country: { populate: ['currency'] } }
+    });
+    const bidder = await strapi.entityService.findOne('plugin::users-permissions.user', data.user, {
+      populate: ['country']
+    });
+
+    const isInternational = job.owner.country.id !== bidder.country.id;
+
+    if (isInternational) {
+      const fixedUsdMin = 5.00; // Static global safeguard
+      if (data.proposed_amount_usd < fixedUsdMin) {
+        throw new Error(`International bids must meet the minimum fallback rate of $5.00 USD.`);
+      }
+    } else {
+      const domesticMin = job.country.currency.minimum_national_bid;
+      if (data.proposed_amount_local < domesticMin) {
+        throw new Error(`Bid rejected. The domestic floor limit for this area is ${job.country.currency.symbol}${domesticMin}.`);
+      }
+    }
+  }
+};
+Use code with caution.💳 Digital Escrow Ledger (No-Cash Safeguard)The platform functions as an intermediary clearinghouse to establish payment trust between parties. Cash handshakes are banned.[Job Poster Funds Escrow via Gateway] ──► [Funds Held by Platform] ──► [Worker Submits Deliverables]
+                                                                                   │
+                                                                       (Job marked complete)
+                                                                                   ▼
+[Worker Safe-Withdrawal Available] ◄─────────────────────────────────── [Poster Confirms Completion]
+Deposit Phase: The job creator funds the project upfront using integrated aggregators (e.g., Paystack, Flutterwave, DPO Group). Funds are held securely by the platform.Execution Phase: The assigned worker completes the task. Funds remain securely locked.Release Phase: The employer flags the job as completed via the UI. Strapi moves the held balance to the worker's wallet profile, unlocking manual withdrawals to their mobile money account.🕦 Implementation & Execution Timeline========================================================================================
+PHASE 1: Core Systems Architecture (Weeks 1-2)
+├─ DB Schema Config (MySQL + Strapi) ──────────────────────────■
+└─ API Localization Filters & Country Rules ───────────────────■
+
+PHASE 2: Interface Engineering (Weeks 3-4)
+├─ Next.js Main Interface & Badging System ────────────────────■
+└─ Searchable Skills Catalog Framework ────────────────────────■
+
+PHASE 3: Mobile Sync & Gateways (Weeks 5-6)
+├─ Native JavaScript Bridge (GPS/Push Notifications) ──────────■
+└─ Payment Gateway APIs & Escrow Logic ────────────────────────■
+
+PHASE 4: MMP Automation & Launch Validation (Week 7)
+├─ Inline Assistant Engines & Prompt Filters ──────────────────■
+└─ Production Release & Playbook Hardening ────────────────────■
+========================================================================================
+Phase 1: Core Systems Architecture (Weeks 1-2)Deliverables: Live Strapi headless portal running alongside an structured MySQL relational instance.Milestones: Completed localization models, schema relations, validation loops, and data security policies.Phase 2: Interface Engineering (Weeks 3-4)Deliverables: Production-ready Next.js deployment featuring Pan-African styling.Milestones: Implementation of dual-profile forms, asynchronous skills search components, profile completion meters, and verification video upload interfaces.Phase 3: Mobile Sync & Gateways (Weeks 5-6)Deliverables: Compiled native React Native shell pipelines executing smooth webview renders.Milestones: Functional JavaScript post-message bridge processing location updates without revealing precise coordinates, alongside functional payment webhooks.Phase 4: MMP Automation & Launch Validation (Week 7)Deliverables: Inline text-generation assistant modules with transactional validation guardrails.Milestones: End-to-end user evaluation runs, script validation, and live deployment on edge distribution networks.🚀 Proposed Next StepsTo move forward with this project plan, let me know which component we should tackle first:Generate the raw MySQL schema structure script to pre-seed the countries, cities, and local gig terminology.Build out the React Native code for the native tracking module that feeds location data back to Next.js.Design the user interface and database flow for tracking user completion percentages across Skilled and Professional profiles.
+
+# AfriGigs — Full Project Plan
+
+**A localized, pan-African, mobile-first gig marketplace**
+
+---
+
+## 1. Executive Summary
+
+AfriGigs connects independent workers ("gig-runners") with local and international job posters across African markets, using an escrow-backed payment system, dynamic per-country bidding rules, and privacy-safe proximity matching. This plan expands the original blueprint into a build-ready roadmap: architecture, design system, data model, workflows, team structure, timeline, and risk plan.
+
+**Tech stack (confirmed):**
+- Frontend: **Next.js** + **MUI (Material UI)** as the component library, **Framer Motion** for animation, **custom CSS Grid/Flexbox layout system** (MUI's `Grid`/`Grid2` is explicitly *not* used — see §4.3)
+- Mobile shell: **React Native** WebView wrapper (native GPS + push notifications bridged via `postMessage`)
+- Backend: **Strapi** (headless CMS as business-logic/API layer)
+- Database: **MySQL**
+- Payments: Paystack / Flutterwave / DPO Group aggregators
+- Geocoding: Google Geocoding API (reverse-geocode only, never raw coordinates to other users)
+
+---
+
+## 2. System Architecture
+
+```
+┌─────────────────────────────────────┐
+│      React Native Wrapper App        │
+│  Native GPS · Push Notifications     │
+│  postMessage bridge → WebView         │
+└───────────────────┬───────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────┐
+│           Next.js Web App             │
+│  MUI Theme · Framer Motion · Custom   │
+│  Grid System · SSR/ISR pages          │
+└───────────────────┬───────────────────┘
+                    │  REST / GraphQL
+                    ▼
+┌─────────────────────────────────────┐
+│          Strapi CMS Engine            │
+│  Lifecycles · Bid validation ·        │
+│  Escrow rules · Localization API      │
+└───────────────────┬───────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────┐
+│            MySQL Database             │
+│  Ledgers · Georeferences · Profiles   │
+└─────────────────────────────────────┘
+```
+
+**Cross-cutting services:**
+- Auth: Strapi `users-permissions` extended with `is_anonymous`, `is_verified_human`
+- Notifications: Native push (FCM/APNs) triggered by Strapi webhooks on bid/escrow events
+- Media: Strapi Media Library (or S3-compatible bucket) for resumes, ID photos, verification video clips
+- Background jobs: Strapi cron for escrow timeout checks, trust-score recalculation, stale-bid cleanup
+
+---
+
+## 3. Information Architecture / Sitemap
+
+| Route | Purpose | Access |
+|---|---|---|
+| `/` | Landing — value prop, live gig ticker | Public |
+| `/onboarding` | Multi-step registration (Instant Onboarding flow) | Public |
+| `/dashboard` | Role-aware home (Skilled / Professional / Poster) | Auth |
+| `/gigs` | Browse/search gigs (localized term e.g. "Gigs" / "Ganyu") | Auth |
+| `/gigs/[id]` | Gig detail + bid panel | Auth |
+| `/gigs/new` | Post a job (employer flow) | Auth |
+| `/profile/[id]` | Public profile, trust score, badges | Public/Auth |
+| `/profile/edit` | Skilled/Professional profile completion flow | Auth |
+| `/verify` | Video verification upload | Auth |
+| `/wallet` | Escrow balance, withdrawal, transaction history | Auth |
+| `/messages` | In-app chat tied to active gigs | Auth |
+| `/admin` (Strapi) | CMS: countries, currencies, skills catalog, moderation | Internal |
+
+---
+
+## 4. Frontend Design System
+
+### 4.1 Visual Direction
+"Clean, modern, trustworthy" — the dark Pan-African palette from the blueprint is kept but refined for MUI theming and layered depth (glassy elevation, soft glow accents) rather than flat blocks.
+
+**Palette (as MUI theme tokens):**
+```js
+palette: {
+  mode: 'dark',
+  primary:   { main: '#00BFA6', dark: '#009688', light: '#5BE0CB' }, // Unity Green, brightened for AA contrast
+  secondary: { main: '#FFC107', dark: '#C79100', light: '#FFD54F' }, // Gold
+  error:     { main: '#EF5350', dark: '#D32F2F' },                   // Alert Red
+  background:{ default: '#121212', paper: '#1A1A1A' },
+  divider:   'rgba(255,255,255,0.08)',
+}
+```
+
+**Elevation strategy:** replace MUI's default flat `elevation` shadows with a custom shadow scale (soft, colored, low-spread) — e.g. cards get `box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04)`, active/hovered cards add a faint primary-color glow (`0 0 20px rgba(0,191,166,0.15)`).
+
+**Gradients:** used sparingly as accents, not backgrounds — CTA buttons use a 135° green→teal gradient; the "Verified" badge uses a gold gradient sheen; hero section uses a radial gradient vignette behind a mesh/grain texture at low opacity.
+
+**Typography:** `Inter` or `General Sans` for UI, tighter tracking on headings, a numeric tabular-figure font (e.g. `Space Grotesk` or the same family's tabular variant) for wallet balances and bid amounts so numbers don't jitter on update.
+
+### 4.2 Motion (Framer Motion)
+- **Page transitions:** shared-layout fade/slide (`AnimatePresence` + `layoutId`) between `/gigs` list and `/gigs/[id]` detail — the gig card animates into the detail hero.
+- **Micro-interactions:** button press = scale 0.97 + shadow compress; bid submission = success checkmark draws in via `pathLength` animation.
+- **Skeleton → content:** staggered fade/slide-up (`staggerChildren`) as gig cards populate, avoiding layout pop.
+- **Verification badge:** subtle looping shimmer (gradient position animation) on "Unverified" state to draw the eye without being obnoxious; stops and morphs to a solid check once verified.
+- **Trust/Proximity sort changes:** cards use `layout` prop so re-sorting animates positions rather than jump-cutting.
+- Respect `prefers-reduced-motion` — all animations wrapped with a reduced-motion fallback (opacity-only).
+
+### 4.3 Custom Grid System (No MUI Grid)
+Per requirement, MUI's `Grid`/`Grid2` is not used anywhere. Instead, a small custom layout primitive set is built once and reused:
+
+```
+components/layout/
+  Stack.tsx      → thin wrapper over CSS flexbox (gap, direction, align, justify, wrap)
+  GridBox.tsx    → thin wrapper over CSS Grid (columns, rows, gap, responsive column-count via props + MUI useMediaQuery)
+  Container.tsx  → max-width + responsive padding shell
+```
+
+Example `GridBox` usage for the gig list:
+```tsx
+<GridBox columns={{ xs: 1, sm: 2, md: 3, lg: 4 }} gap={3}>
+  {gigs.map(g => <GigCard key={g.id} {...g} />)}
+</GridBox>
+```
+Internally this resolves to native `display: grid; grid-template-columns: repeat(n, 1fr); gap: ...` with breakpoints pulled from the MUI theme's `theme.breakpoints`, so spacing/typography stay token-consistent with MUI while layout math stays custom and fully controllable (e.g. asymmetric featured-gig layouts, masonry-style profile galleries) which MUI's Grid can't easily do.
+
+### 4.4 Core Component Inventory
+- `GigCard` (compact/expanded variants), `TrustBadge`, `VerifiedTag`, `BidTicket`, `WalletBalanceChip`, `ProfileCompletionRing` (animated SVG progress), `CountryCurrencySelector`, `OnboardingStepper` (custom, not MUI `Stepper` visuals but same a11y pattern), `EscrowStatusTimeline`.
+
+---
+
+## 5. Data Model (Strapi Content Types)
+
+Building directly on the blueprint's schema, with additions needed for a production build:
+
+**Currency** — `code`, `symbol`, `minimum_national_bid`
+**Country** — `name`, `iso_code`, `currency` (1:1), `cities[]`, `gig_local_term_singular/plural`
+**User (extended)** — `is_anonymous`, `is_verified_human`, `profile_completion_skilled/professional`, `trust_score_yes`, `native_last_city`, `country` (M:1)
+**SkilledProfile** — `national_id_number`, `skills_category`, `skills` (M:M → SkillsCatalog), `description`
+**ProfessionalProfile** — `resume_file`, `education_history` (JSON), `certifications` (component array), `experience_summary`
+
+**Additions for full functionality:**
+- **Job** — `title`, `description`, `owner` (→User), `country`, `target_city`, `scope` (enum: `LOCAL` / `FOR_EVERYONE`), `status` (enum: `open/in_progress/completed/disputed/cancelled`), `budget_currency`, `budget_amount`, `escrow_status`
+- **Bid** — `job` (→Job), `user` (→User), `proposed_amount_local`, `proposed_amount_usd`, `status` (`pending/accepted/rejected/withdrawn`), lifecycle-validated per blueprint's `beforeCreate` hook
+- **EscrowTransaction** — `job`, `amount`, `currency`, `gateway_ref`, `status` (`funded/held/released/refunded`), timestamps
+- **Wallet** — `user` (1:1), `balance`, `pending_balance`, `currency`
+- **SkillsCatalog** — `name`, `category`, `icon`
+- **VerificationSubmission** — `user`, `video_url`, `status` (`pending/approved/rejected`), `reviewer_notes`
+- **Review** — `job`, `from_user`, `to_user`, `rating`, `comment` (feeds `trust_score_yes`)
+- **Message/Conversation** — tied to a `Job`, simple threaded chat
+
+---
+
+## 6. Core Workflows
+
+### 6.1 Onboarding & Verification
+`Register → Basic details + ID number + skills category → Instantly browse & bid (Unverified badge)` → optional `Upload scripted video selfie → Strapi review queue → Verified badge`.
+- Unverified users can bid but their `BidTicket` renders with a caution chip; some employers may filter to verified-only.
+- Verification review can start manual (admin panel in Strapi) and later add automated liveness/ID-match checks.
+
+### 6.2 GPS & Proximity Matching
+- Native app reads device GPS → sends raw lat/lng to WebView via a JS bridge message.
+- Server reverse-geocodes to city-level only (`native_last_city`) — **raw coordinates are never persisted or exposed to other users**, only the resolved city string.
+- `rankBids()` sorts: proximity (if job scope is `LOCAL`) → `trust_score_yes` → `profile_completion_skilled`, exactly as in the blueprint's TypeScript sort function — this ships as a Strapi custom controller.
+
+### 6.3 Bidding Thresholds
+- International bid (poster country ≠ bidder country): minimum **$5.00 USD** fixed floor.
+- Domestic bid: minimum = `country.currency.minimum_national_bid`.
+- Enforced in a Strapi lifecycle hook (`beforeCreate` on Bid) — errors surface as inline form validation in the Next.js `BidTicket` component, not raw 500s.
+
+### 6.4 Escrow Ledger
+`Poster funds job (Paystack/Flutterwave/DPO) → funds held in EscrowTransaction → worker delivers → poster confirms completion → funds move to Wallet.balance → worker withdraws to mobile money`.
+- Add a **dispute path**: if poster doesn't confirm within N days of delivery marked, job auto-flags for admin review rather than silently staying locked.
+- Add **partial release** support for milestone-based jobs (future phase).
+
+---
+
+## 7. Non-Functional Requirements
+
+| Area | Requirement |
+|---|---|
+| Performance | LCP < 2.5s on 3G-equivalent connections common in target markets; aggressive image compression, WebView asset caching |
+| Offline resilience | Queue bid/message actions locally in the RN shell when connectivity drops, sync on reconnect |
+| Security | ID numbers and verification videos encrypted at rest; raw GPS never stored; rate-limiting on bid/auth endpoints |
+| Localization | All copy pulled from Strapi i18n fields; currency/number formatting via `Intl.NumberFormat` per country |
+| Accessibility | WCAG AA contrast on dark palette (verify gold-on-black and green-on-black ratios specifically); reduced-motion support |
+| Compliance | KYC data handling aligned with each target country's data-protection law (e.g. Nigeria NDPR, Kenya DPA, Zambia's Data Protection Act) |
+
+---
+
+## 8. Team & Roles
+
+- 1 Backend/Strapi engineer (schemas, lifecycles, escrow logic)
+- 1–2 Frontend engineers (Next.js, MUI theme system, custom grid/animation layer)
+- 1 React Native engineer (GPS/push bridge — can overlap with a frontend engineer)
+- 1 Product/UX designer (design tokens, Figma component library matching §4)
+- 1 QA (payment flow + bid validation edge cases are highest-risk surface)
+- 1 PM
+
+---
+
+## 9. Implementation Timeline (Expanded)
+
+**Phase 0 — Design Foundations (Week 0, pre-work)**
+- Finalize MUI theme tokens, typography scale, shadow/gradient system
+- Build `Stack`/`GridBox`/`Container` layout primitives + Storybook entries
+- Figma component library sign-off
+
+**Phase 1 — Core Systems Architecture (Weeks 1–2)**
+- MySQL + Strapi schema build: Currency, Country, User extensions, SkilledProfile, ProfessionalProfile, Job, Bid, Wallet, EscrowTransaction, SkillsCatalog
+- Localization API + country-rule middleware
+- Bid lifecycle validation hook
+
+**Phase 2 — Interface Engineering (Weeks 3–4)**
+- Next.js shell, routing, MUI ThemeProvider + Framer Motion wrappers
+- Onboarding stepper, dual-profile forms, profile-completion ring
+- Gig browse/search using `GridBox`, `GigCard`, filters
+- Verification upload UI
+
+**Phase 3 — Mobile Sync & Gateways (Weeks 5–6)**
+- React Native WebView shell + `postMessage` GPS/push bridge
+- Reverse-geocoding integration, `native_last_city` sync
+- Payment gateway integration (Paystack/Flutterwave/DPO) + escrow webhooks
+- Wallet UI + withdrawal flow
+
+**Phase 4 — Trust, Messaging & Launch Hardening (Week 7)**
+- Review/rating system feeding `trust_score_yes`
+- In-app messaging (per-job threads)
+- Dispute-flagging for stalled escrow
+- QA pass on bid threshold edge cases (currency mismatches, rounding)
+- Load testing, production deploy, monitoring/alerting setup
+
+**Phase 5 — Post-Launch (Week 8+, ongoing)**
+- Admin moderation tooling refinement
+- Analytics dashboard (gig fill-rate, time-to-hire, trust-score distribution)
+- Milestone-based escrow, in-app disputes/arbitration flow
+- Additional country rollouts (new `Country`/`Currency` records + copy)
+
+---
+
+## 10. Risks & Mitigations
+
+| Risk | Mitigation |
+|---|---|
+| Currency/FX mismatches on international bids | Lock `proposed_amount_usd` at bid time using a snapshot rate; don't recompute live |
+| Fake/GPS-spoofed verification videos | Manual review queue at launch; plan for liveness-detection vendor later |
+| Escrow disputes with no resolution path | Build the auto-flag-to-admin timeout from day one, not as an afterthought |
+| MUI + custom grid drift (inconsistent spacing) | Pull all spacing from `theme.spacing()`, never hardcode px, enforced via lint rule |
+| Low-end Android performance with heavy animation | Gate non-essential Framer Motion effects behind a device-capability/`prefers-reduced-motion` check |
+
+---
+
+## 11. Immediate Next Steps
+
+Pick a starting point and I'll build it out in full:
+1. **MUI theme file + custom `GridBox`/`Stack` primitives** (the actual design-system code)
+2. **Strapi schema + lifecycle scripts** (SQL/JSON schema plus the bid validation hook, ready to drop in)
+3. **Figma-to-code `GigCard` + `OnboardingStepper` components** with Framer Motion wired in
+4. **React Native GPS/push bridge module**
+
+Let me know which one to build first.

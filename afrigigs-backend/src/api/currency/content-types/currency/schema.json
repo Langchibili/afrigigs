@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "currencies",
+  "info": {
+    "singularName": "currency",
+    "pluralName": "currencies",
+    "displayName": "Currency",
+    "description": "ISO currency + national bid floor"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "maxLength": 3,
+      "minLength": 3,
+      "regex": "^[A-Z]{3}$"
+    },
+    "symbol": {
+      "type": "string",
+      "required": true,
+      "maxLength": 8
+    },
+    "minimum_national_bid": {
+      "type": "decimal",
+      "required": true,
+      "default": 0
+    },
+    "country": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::country.country",
+      "mappedBy": "currency"
+    }
+  }
+}
