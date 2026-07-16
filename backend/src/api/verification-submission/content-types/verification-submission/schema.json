@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "verification_submissions",
+  "info": {
+    "singularName": "verification-submission",
+    "pluralName": "verification-submissions",
+    "displayName": "Verification Submission",
+    "description": "Scripted video-selfie ID verification review queue"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "verification_submissions"
+    },
+    "video": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "videos"
+      ]
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending",
+      "required": true
+    },
+    "reviewer_notes": {
+      "type": "text"
+    },
+    "reviewed_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "admin::user"
+    },
+    "reviewed_at": {
+      "type": "datetime"
+    }
+  }
+}

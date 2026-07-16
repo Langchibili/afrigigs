@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "skills_catalog",
+  "info": {
+    "singularName": "skills-catalog",
+    "pluralName": "skills-catalogs",
+    "displayName": "Skill",
+    "description": "Master catalog of skills"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "Manual Trades",
+        "Digital Services",
+        "Domestic Services",
+        "Transport & Logistics",
+        "Creative & Media",
+        "Professional Services"
+      ],
+      "required": true
+    },
+    "icon": {
+      "type": "string"
+    },
+    "skilled_profiles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::skilled-profile.skilled-profile",
+      "mappedBy": "skills"
+    }
+  }
+}

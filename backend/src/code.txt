@@ -1,0 +1,2195 @@
+
+================================================================================
+FILE: admin/app.example.tsx
+================================================================================
+
+import type { StrapiApp } from '@strapi/strapi/admin';
+
+export default {
+  config: {
+    locales: [
+      // 'ar',
+      // 'fr',
+      // 'cs',
+      // 'de',
+      // 'da',
+      // 'es',
+      // 'he',
+      // 'id',
+      // 'it',
+      // 'ja',
+      // 'ko',
+      // 'ms',
+      // 'nl',
+      // 'no',
+      // 'pl',
+      // 'pt-BR',
+      // 'pt',
+      // 'ru',
+      // 'sk',
+      // 'sv',
+      // 'th',
+      // 'tr',
+      // 'uk',
+      // 'vi',
+      // 'zh-Hans',
+      // 'zh',
+    ],
+  },
+  bootstrap(app: StrapiApp) {
+    console.log(app);
+  },
+};
+
+================================================================================
+FILE: admin/tsconfig.json
+================================================================================
+
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["../plugins/**/admin/src/**/*", "./"],
+  "exclude": ["node_modules/", "build/", "dist/", "**/*.test.ts"]
+}
+
+================================================================================
+FILE: admin/vite.config.example.ts
+================================================================================
+
+import { mergeConfig, type UserConfig } from 'vite';
+
+export default (config: UserConfig) => {
+  // Important: always return the modified config
+  return mergeConfig(config, {
+    resolve: {
+      alias: {
+        '@': '/src',
+      },
+    },
+  });
+};
+
+================================================================================
+FILE: api/bid/content-types/bid/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "bids",
+  "info": {
+    "singularName": "bid",
+    "pluralName": "bids",
+    "displayName": "Bid",
+    "description": "A worker's bid on a job"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "job": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::job.job",
+      "inversedBy": "bids"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "bids"
+    },
+    "proposed_amount_local": {
+      "type": "decimal"
+    },
+    "proposed_amount_usd": {
+      "type": "decimal"
+    },
+    "message": {
+      "type": "text"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "accepted",
+        "rejected",
+        "withdrawn"
+      ],
+      "default": "pending",
+      "required": true
+    }
+  }
+}
+
+================================================================================
+FILE: api/bid/controllers/bid.ts
+================================================================================
+
+/**
+ * bid controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::bid.bid');
+
+================================================================================
+FILE: api/bid/routes/bid.ts
+================================================================================
+
+/**
+ * bid router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::bid.bid');
+
+================================================================================
+FILE: api/bid/services/bid.ts
+================================================================================
+
+/**
+ * bid service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::bid.bid');
+
+================================================================================
+FILE: api/conversation/content-types/conversation/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "conversations",
+  "info": {
+    "singularName": "conversation",
+    "pluralName": "conversations",
+    "displayName": "Conversation",
+    "description": "A per-job message thread between poster and worker"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "job": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::job.job"
+    },
+    "participants": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "messages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::message.message",
+      "mappedBy": "conversation"
+    }
+  }
+}
+
+================================================================================
+FILE: api/conversation/controllers/conversation.ts
+================================================================================
+
+/**
+ * conversation controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::conversation.conversation');
+
+================================================================================
+FILE: api/conversation/routes/conversation.ts
+================================================================================
+
+/**
+ * conversation router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::conversation.conversation');
+
+================================================================================
+FILE: api/conversation/services/conversation.ts
+================================================================================
+
+/**
+ * conversation service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::conversation.conversation');
+
+================================================================================
+FILE: api/country/content-types/country/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "countries",
+  "info": {
+    "singularName": "country",
+    "pluralName": "countries",
+    "displayName": "Country",
+    "description": "Localization + currency + gig terminology per country"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "iso_code": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "maxLength": 2,
+      "minLength": 2,
+      "regex": "^[A-Z]{2}$"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::currency.currency",
+      "inversedBy": "country"
+    },
+    "cities": {
+      "type": "json",
+      "default": []
+    },
+    "gig_local_term_singular": {
+      "type": "string",
+      "default": "Gig"
+    },
+    "gig_local_term_plural": {
+      "type": "string",
+      "default": "Gigs"
+    },
+    "users": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "country"
+    },
+    "jobs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::job.job",
+      "mappedBy": "country"
+    }
+  }
+}
+
+================================================================================
+FILE: api/country/controllers/country.ts
+================================================================================
+
+/**
+ * country controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::country.country');
+
+================================================================================
+FILE: api/country/routes/country.ts
+================================================================================
+
+/**
+ * country router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::country.country');
+
+================================================================================
+FILE: api/country/services/country.ts
+================================================================================
+
+/**
+ * country service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::country.country');
+
+================================================================================
+FILE: api/currency/content-types/currency/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "currencies",
+  "info": {
+    "singularName": "currency",
+    "pluralName": "currencies",
+    "displayName": "Currency",
+    "description": "ISO currency + national bid floor"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "maxLength": 3,
+      "minLength": 3,
+      "regex": "^[A-Z]{3}$"
+    },
+    "symbol": {
+      "type": "string",
+      "required": true,
+      "maxLength": 8
+    },
+    "minimum_national_bid": {
+      "type": "decimal",
+      "required": true,
+      "default": 0
+    },
+    "country": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::country.country",
+      "mappedBy": "currency"
+    }
+  }
+}
+
+================================================================================
+FILE: api/currency/controllers/currency.ts
+================================================================================
+
+/**
+ * currency controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::currency.currency');
+
+================================================================================
+FILE: api/currency/routes/currency.ts
+================================================================================
+
+/**
+ * currency router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::currency.currency');
+
+================================================================================
+FILE: api/currency/services/currency.ts
+================================================================================
+
+/**
+ * currency service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::currency.currency');
+
+================================================================================
+FILE: api/escrow-transaction/content-types/escrow-transaction/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "escrow_transactions",
+  "info": {
+    "singularName": "escrow-transaction",
+    "pluralName": "escrow-transactions",
+    "displayName": "Escrow Transaction",
+    "description": "Funds held/released for a job"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "job": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::job.job",
+      "inversedBy": "escrow_transactions"
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "gateway": {
+      "type": "enumeration",
+      "enum": [
+        "paystack",
+        "flutterwave",
+        "dpo"
+      ],
+      "required": true
+    },
+    "gateway_ref": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "funded",
+        "held",
+        "released",
+        "refunded",
+        "failed"
+      ],
+      "default": "funded",
+      "required": true
+    }
+  }
+}
+
+================================================================================
+FILE: api/escrow-transaction/controllers/escrow-transaction.ts
+================================================================================
+
+// src/api/escrow-transaction/controllers/escrow-transaction.ts
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::escrow-transaction.escrow-transaction', ({ strapi }) => ({
+    /**
+     * Job-poster-only. Moves held escrow into the assigned worker's Wallet
+     * and closes out the job.
+     */
+    async release(ctx) {
+        try {
+            const { id } = ctx.params;
+            const requester = ctx.state.user;
+
+            const transaction: any = await strapi.db.query('api::escrow-transaction.escrow-transaction').findOne({
+                where: { id },
+                populate: { job: { populate: ['owner', 'assigned_worker'] }, currency: true },
+            });
+
+            if (!transaction) return ctx.notFound('Escrow transaction not found.');
+            if (transaction.status !== 'held' && transaction.status !== 'funded') {
+                return ctx.badRequest(`Transaction is already ${transaction.status}.`);
+            }
+
+            const job = transaction.job;
+            if (!job || !job.owner) return ctx.badRequest('Escrow transaction is not linked to a valid job.');
+            if (requester && job.owner.id !== requester.id) {
+                return ctx.forbidden('Only the job poster can release escrow funds.');
+            }
+            if (!job.assigned_worker) return ctx.badRequest('Job has no assigned worker to release funds to.');
+
+            const workerId = job.assigned_worker.id;
+
+            let wallet: any = await strapi.db.query('api::wallet.wallet').findOne({
+                where: { user: workerId },
+            });
+
+            if (!wallet) {
+                wallet = await strapi.db.query('api::wallet.wallet').create({
+                    data: { user: workerId, balance: 0, pending_balance: 0, currency: transaction.currency?.id },
+                });
+            }
+
+            await strapi.db.query('api::wallet.wallet').update({
+                where: { id: wallet.id },
+                data: { balance: Number(wallet.balance) + Number(transaction.amount) },
+            });
+
+            await strapi.db.query('api::escrow-transaction.escrow-transaction').update({
+                where: { id },
+                data: { status: 'released' },
+            });
+
+            await strapi.db.query('api::job.job').update({
+                where: { id: job.id },
+                data: { status: 'completed', escrow_status: 'released', completed_at: new Date() },
+            });
+
+            ctx.send({
+                success: true,
+                data: { released: true, walletId: wallet.id, amount: transaction.amount },
+            });
+        } catch (error) {
+            strapi.log.error('Error releasing escrow:', error);
+            ctx.internalServerError('Failed to release escrow');
+        }
+    },
+}));
+
+================================================================================
+FILE: api/escrow-transaction/routes/01-custom-routes.ts
+================================================================================
+
+// src/api/escrow-transaction/routes/01-custom-routes.ts
+
+export default {
+    routes: [
+        {
+            method: 'POST',
+            path: '/escrow-transactions/:id/release',
+            handler: 'escrow-transaction.release',
+            config: { policies: [], middlewares: [] },
+        },
+    ],
+};
+
+================================================================================
+FILE: api/escrow-transaction/routes/escrow-transaction.ts
+================================================================================
+
+/**
+ * escrow-transaction router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::escrow-transaction.escrow-transaction');
+
+================================================================================
+FILE: api/escrow-transaction/services/escrow-transaction.ts
+================================================================================
+
+/**
+ * escrow-transaction service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::escrow-transaction.escrow-transaction');
+
+================================================================================
+FILE: api/job/content-types/job/lifecycles.ts
+================================================================================
+
+// src/api/bid/content-types/bid/lifecycles.ts
+
+const FIXED_USD_MIN = 5.0;
+
+function extractId(relation: any): number | null {
+    if (relation === null || relation === undefined) return null;
+    if (typeof relation === 'number') return relation;
+    if (typeof relation === 'string') return Number(relation);
+    if (relation.id) return relation.id;
+    if (Array.isArray(relation.connect) && relation.connect[0]) {
+        return relation.connect[0].id ?? relation.connect[0];
+    }
+    return null;
+}
+
+export default {
+    /**
+     * Enforces the national vs. international bid floor:
+     *   - International (job owner country !== bidder country): min $5.00 USD
+     *   - Domestic: min = country.currency.minimum_national_bid (local currency)
+     * Also blocks bids on closed jobs and self-bids.
+     */
+    async beforeCreate(event: any) {
+        const { data } = event.params;
+
+        const jobId = extractId(data.job);
+        const userId = extractId(data.user);
+
+        if (!jobId || !userId) {
+            throw new Error('A bid requires both a job and a user.');
+        }
+
+        const job: any = await strapi.db.query('api::job.job').findOne({
+            where: { id: jobId },
+            populate: { owner: { populate: ['country'] }, country: { populate: ['currency'] } },
+        });
+
+        if (!job) throw new Error('Cannot bid on a job that does not exist.');
+        if (job.status !== 'open') throw new Error('This job is no longer accepting bids.');
+
+        const bidder: any = await strapi.db.query('plugin::users-permissions.user').findOne({
+            where: { id: userId },
+            populate: ['country'],
+        });
+
+        if (!bidder) throw new Error('Bidder account could not be resolved.');
+        if (job.owner && job.owner.id === bidder.id) {
+            throw new Error('You cannot bid on your own job.');
+        }
+
+        const ownerCountryId = job.owner?.country?.id ?? null;
+        const bidderCountryId = bidder.country?.id ?? null;
+        const isInternational = ownerCountryId !== bidderCountryId;
+
+        if (isInternational) {
+            const proposedUsd = Number(data.proposed_amount_usd);
+            if (!proposedUsd || proposedUsd < FIXED_USD_MIN) {
+                throw new Error(
+                    `International bids must meet the minimum fallback rate of $${FIXED_USD_MIN.toFixed(2)} USD.`
+                );
+            }
+        } else {
+            const domesticMin = job.country?.currency ? Number(job.country.currency.minimum_national_bid) : 0;
+            const proposedLocal = Number(data.proposed_amount_local);
+            const symbol = job.country?.currency ? job.country.currency.symbol : '';
+
+            if (!proposedLocal || proposedLocal < domesticMin) {
+                throw new Error(`Bid rejected. The domestic floor limit for this area is ${symbol}${domesticMin}.`);
+            }
+        }
+    },
+
+    /**
+     * Bid amounts are immutable once submitted — withdraw and re-bid instead
+     * of editing, so the floor-check above can't be bypassed via update.
+     */
+    async beforeUpdate(event: any) {
+        const { data } = event.params;
+        if (data && (data.proposed_amount_local !== undefined || data.proposed_amount_usd !== undefined)) {
+            throw new Error('Bid amounts cannot be edited after submission. Withdraw and re-bid instead.');
+        }
+    },
+};
+
+================================================================================
+FILE: api/job/content-types/job/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "jobs",
+  "info": {
+    "singularName": "job",
+    "pluralName": "jobs",
+    "displayName": "Job",
+    "description": "A posted gig / job"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "richtext",
+      "required": true
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "posted_jobs"
+    },
+    "country": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::country.country",
+      "inversedBy": "jobs"
+    },
+    "target_city": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "enumeration",
+      "enum": [
+        "LOCAL",
+        "FOR_EVERYONE"
+      ],
+      "default": "LOCAL",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "open",
+        "in_progress",
+        "completed",
+        "disputed",
+        "cancelled"
+      ],
+      "default": "open",
+      "required": true
+    },
+    "budget_currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "budget_amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "escrow_status": {
+      "type": "enumeration",
+      "enum": [
+        "unfunded",
+        "funded",
+        "held",
+        "released",
+        "refunded"
+      ],
+      "default": "unfunded"
+    },
+    "skills_required": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::skills-catalog.skills-catalog"
+    },
+    "bids": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::bid.bid",
+      "mappedBy": "job"
+    },
+    "escrow_transactions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::escrow-transaction.escrow-transaction",
+      "mappedBy": "job"
+    },
+    "assigned_worker": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "completed_at": {
+      "type": "datetime"
+    },
+    "completion_confirmation_deadline": {
+      "type": "datetime"
+    }
+  }
+}
+
+================================================================================
+FILE: api/job/controllers/job.ts
+================================================================================
+
+// src/api/job/controllers/job.ts
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::job.job', ({ strapi }) => ({
+    /**
+     * Returns a job's bids sorted by:
+     *   1. Proximity to target_city (skipped when scope === 'FOR_EVERYONE')
+     *   2. trust_score_yes (descending)
+     *   3. profile_completion_skilled (descending)
+     */
+    async rankBids(ctx) {
+        try {
+            const { id } = ctx.params;
+
+            const job: any = await strapi.db.query('api::job.job').findOne({
+                where: { id },
+                populate: { bids: { populate: ['user'] } },
+            });
+
+            if (!job) return ctx.notFound('Job not found');
+
+            const isGlobal = job.scope === 'FOR_EVERYONE';
+
+            const ranked = [...(job.bids || [])].sort((a: any, b: any) => {
+                if (!isGlobal) {
+                    const proximityA = a.user?.native_last_city === job.target_city ? 0 : 1;
+                    const proximityB = b.user?.native_last_city === job.target_city ? 0 : 1;
+                    if (proximityA !== proximityB) return proximityA - proximityB;
+                }
+
+                const trustA = a.user?.trust_score_yes || 0;
+                const trustB = b.user?.trust_score_yes || 0;
+                if (trustB !== trustA) return trustB - trustA;
+
+                const completionA = a.user?.profile_completion_skilled || 0;
+                const completionB = b.user?.profile_completion_skilled || 0;
+                return completionB - completionA;
+            });
+
+            ctx.send({ success: true, data: ranked });
+        } catch (error) {
+            strapi.log.error('Error ranking bids:', error);
+            ctx.internalServerError('Failed to rank bids');
+        }
+    },
+}));
+
+================================================================================
+FILE: api/job/routes/01-custom-routes.ts
+================================================================================
+
+// src/api/job/routes/01-custom-routes.ts
+
+export default {
+    routes: [
+        {
+            method: 'GET',
+            path: '/jobs/:id/rank-bids',
+            handler: 'job.rankBids',
+            config: { policies: [], middlewares: [] },
+        },
+    ],
+};
+
+================================================================================
+FILE: api/job/routes/job.ts
+================================================================================
+
+/**
+ * job router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::job.job');
+
+================================================================================
+FILE: api/job/services/job.ts
+================================================================================
+
+/**
+ * job service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::job.job');
+
+================================================================================
+FILE: api/message/content-types/message/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "messages",
+  "info": {
+    "singularName": "message",
+    "pluralName": "messages",
+    "displayName": "Message",
+    "description": "A single chat message within a job conversation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "conversation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::conversation.conversation",
+      "inversedBy": "messages"
+    },
+    "sender": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "body": {
+      "type": "text",
+      "required": true
+    },
+    "read_at": {
+      "type": "datetime"
+    }
+  }
+}
+
+================================================================================
+FILE: api/message/controllers/message.ts
+================================================================================
+
+/**
+ * message controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::message.message');
+
+================================================================================
+FILE: api/message/routes/message.ts
+================================================================================
+
+/**
+ * message router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::message.message');
+
+================================================================================
+FILE: api/message/services/message.ts
+================================================================================
+
+/**
+ * message service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::message.message');
+
+================================================================================
+FILE: api/professional-profile/content-types/professional-profile/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "professional_profiles",
+  "info": {
+    "singularName": "professional-profile",
+    "pluralName": "professional-profiles",
+    "displayName": "Professional Profile",
+    "description": "White-collar / professional services worker profile"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "resume_file": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "files"
+      ]
+    },
+    "education_history": {
+      "type": "json",
+      "default": []
+    },
+    "certifications": {
+      "type": "component",
+      "repeatable": true,
+      "component": "profile.certification"
+    },
+    "experience_summary": {
+      "type": "text"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "professional_profile"
+    }
+  }
+}
+
+================================================================================
+FILE: api/professional-profile/controllers/professional-profile.ts
+================================================================================
+
+/**
+ * professional-profile controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::professional-profile.professional-profile');
+
+================================================================================
+FILE: api/professional-profile/routes/professional-profile.ts
+================================================================================
+
+/**
+ * professional-profile router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::professional-profile.professional-profile');
+
+================================================================================
+FILE: api/professional-profile/services/professional-profile.ts
+================================================================================
+
+/**
+ * professional-profile service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::professional-profile.professional-profile');
+
+================================================================================
+FILE: api/review/content-types/review/lifecycles.ts
+================================================================================
+
+// src/api/review/content-types/review/lifecycles.ts
+
+export default {
+    /**
+     * A 4-5 star review increments the recipient's trust_score_yes, which
+     * feeds directly into the job.rankBids proximity/trust sort algorithm.
+     */
+    async afterCreate(event: any) {
+        const { result } = event;
+
+        const rating = result?.rating;
+        if (!rating || rating < 4) return;
+
+        const review: any = await strapi.db.query('api::review.review').findOne({
+            where: { id: result.id },
+            populate: ['to_user'],
+        });
+
+        const toUserId = review?.to_user?.id;
+        if (!toUserId) return;
+
+        const user: any = await strapi.db.query('plugin::users-permissions.user').findOne({
+            where: { id: toUserId },
+        });
+        if (!user) return;
+
+        await strapi.db.query('plugin::users-permissions.user').update({
+            where: { id: toUserId },
+            data: { trust_score_yes: (user.trust_score_yes || 0) + 1 },
+        });
+    },
+};
+
+================================================================================
+FILE: api/review/content-types/review/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "reviews",
+  "info": {
+    "singularName": "review",
+    "pluralName": "reviews",
+    "displayName": "Review",
+    "description": "Post-job rating feeding trust_score_yes"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "job": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::job.job"
+    },
+    "from_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "to_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "rating": {
+      "type": "integer",
+      "required": true,
+      "min": 1,
+      "max": 5
+    },
+    "comment": {
+      "type": "text"
+    }
+  }
+}
+
+================================================================================
+FILE: api/review/controllers/review.ts
+================================================================================
+
+/**
+ * review controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::review.review');
+
+================================================================================
+FILE: api/review/routes/review.ts
+================================================================================
+
+/**
+ * review router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::review.review');
+
+================================================================================
+FILE: api/review/services/review.ts
+================================================================================
+
+/**
+ * review service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::review.review');
+
+================================================================================
+FILE: api/skilled-profile/content-types/skilled-profile/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "skilled_profiles",
+  "info": {
+    "singularName": "skilled-profile",
+    "pluralName": "skilled-profiles",
+    "displayName": "Skilled Profile",
+    "description": "Blue-collar / manual trades / digital services worker profile"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "national_id_number": {
+      "type": "string",
+      "required": true,
+      "private": true
+    },
+    "skills_category": {
+      "type": "enumeration",
+      "enum": [
+        "Manual Trades",
+        "Digital Services",
+        "Domestic Services",
+        "Transport & Logistics",
+        "Creative & Media",
+        "Professional Services"
+      ],
+      "required": true
+    },
+    "skills": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::skills-catalog.skills-catalog",
+      "inversedBy": "skilled_profiles"
+    },
+    "description": {
+      "type": "text"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "skilled_profile"
+    }
+  }
+}
+
+================================================================================
+FILE: api/skilled-profile/controllers/skilled-profile.ts
+================================================================================
+
+/**
+ * skilled-profile controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::skilled-profile.skilled-profile');
+
+================================================================================
+FILE: api/skilled-profile/routes/skilled-profile.ts
+================================================================================
+
+/**
+ * skilled-profile router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::skilled-profile.skilled-profile');
+
+================================================================================
+FILE: api/skilled-profile/services/skilled-profile.ts
+================================================================================
+
+/**
+ * skilled-profile service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::skilled-profile.skilled-profile');
+
+================================================================================
+FILE: api/skills-catalog/content-types/skills-catalog/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "skills_catalog",
+  "info": {
+    "singularName": "skills-catalog",
+    "pluralName": "skills-catalogs",
+    "displayName": "Skill",
+    "description": "Master catalog of skills"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "Manual Trades",
+        "Digital Services",
+        "Domestic Services",
+        "Transport & Logistics",
+        "Creative & Media",
+        "Professional Services"
+      ],
+      "required": true
+    },
+    "icon": {
+      "type": "string"
+    },
+    "skilled_profiles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::skilled-profile.skilled-profile",
+      "mappedBy": "skills"
+    }
+  }
+}
+
+================================================================================
+FILE: api/skills-catalog/controllers/skills-catalog.ts
+================================================================================
+
+/**
+ * skills-catalog controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::skills-catalog.skills-catalog');
+
+================================================================================
+FILE: api/skills-catalog/routes/skills-catalog.ts
+================================================================================
+
+/**
+ * skills-catalog router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::skills-catalog.skills-catalog');
+
+================================================================================
+FILE: api/skills-catalog/services/skills-catalog.ts
+================================================================================
+
+/**
+ * skills-catalog service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::skills-catalog.skills-catalog');
+
+================================================================================
+FILE: api/verification-submission/content-types/verification-submission/lifecycles.ts
+================================================================================
+
+
+================================================================================
+FILE: api/verification-submission/content-types/verification-submission/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "verification_submissions",
+  "info": {
+    "singularName": "verification-submission",
+    "pluralName": "verification-submissions",
+    "displayName": "Verification Submission",
+    "description": "Scripted video-selfie ID verification review queue"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "verification_submissions"
+    },
+    "video": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "videos"
+      ]
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending",
+      "required": true
+    },
+    "reviewer_notes": {
+      "type": "text"
+    },
+    "reviewed_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "admin::user"
+    },
+    "reviewed_at": {
+      "type": "datetime"
+    }
+  }
+}
+
+================================================================================
+FILE: api/verification-submission/controllers/verification-submission.ts
+================================================================================
+
+/**
+ * verification-submission controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::verification-submission.verification-submission');
+
+================================================================================
+FILE: api/verification-submission/routes/verification-submission.ts
+================================================================================
+
+/**
+ * verification-submission router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::verification-submission.verification-submission');
+
+================================================================================
+FILE: api/verification-submission/services/verification-submission.ts
+================================================================================
+
+/**
+ * verification-submission service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::verification-submission.verification-submission');
+
+================================================================================
+FILE: api/wallet/content-types/wallet/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "wallets",
+  "info": {
+    "singularName": "wallet",
+    "pluralName": "wallets",
+    "displayName": "Wallet",
+    "description": "Withdrawable balance per user"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "wallet"
+    },
+    "balance": {
+      "type": "decimal",
+      "default": 0,
+      "required": true
+    },
+    "pending_balance": {
+      "type": "decimal",
+      "default": 0,
+      "required": true
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    }
+  }
+}
+
+================================================================================
+FILE: api/wallet/controllers/wallet.ts
+================================================================================
+
+/**
+ * wallet controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::wallet.wallet');
+
+================================================================================
+FILE: api/wallet/routes/wallet.ts
+================================================================================
+
+/**
+ * wallet router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::wallet.wallet');
+
+================================================================================
+FILE: api/wallet/services/wallet.ts
+================================================================================
+
+/**
+ * wallet service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::wallet.wallet');
+
+================================================================================
+FILE: code_collection.js
+================================================================================
+
+const fs = require('fs');
+const path = require('path');
+const { promisify } = require('util');
+
+// Promisify fs functions for async/await usage
+const readdir = promisify(fs.readdir);
+const stat = promisify(fs.stat);
+const readFile = promisify(fs.readFile);
+const writeFile = promisify(fs.writeFile);
+
+// ============================================
+// CONFIGURATION - Customize these as needed
+// ============================================
+
+// Directories to ignore (by name - anywhere in the tree)
+const IGNORED_DIRECTORIES = [
+    'node_modules',
+    '.git',
+    '.vscode',
+    '.idea',
+    'dist',
+    'build',
+    'public',
+    'coverage',
+    '.next',
+    '.strapi',
+    '.nuxt',
+    '.cache',
+    '.DS_Store'
+];
+
+// Specific directory paths to ignore (relative to root)
+const IGNORED_DIRECTORY_PATHS = [
+    'app/(auth)',
+    'components/Map',
+    'components/Rider',
+    'lib/api',
+    'app/(main)',
+    'app/finding-driver',
+    'app/trip-summary'
+];
+
+// Files to ignore (by filename - anywhere in the tree)
+const IGNORED_FILES = [
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    '.gitignore',
+    '.env',
+    '.env.local',
+    '.env.development',
+    '.env.production',
+    'code.txt',
+    'code.min.txt',
+    'Thumbs.db',
+    'desktop.ini',
+    'collect-code.js'  // This script itself
+];
+
+// Specific file paths to ignore (relative to root)
+const IGNORED_FILE_PATHS = [
+    'lib/hooks/useAuth.js',
+    'lib/hooks/useRide.js',
+    'app/page.js'
+];
+
+// File extensions to ignore
+const IGNORED_FILE_EXTENSIONS = [
+    '.log', '.tmp', '.temp', '.bak', '.swp', '.swo',
+    '.pid', '.seed', '.pem', '.cert', '.key',
+    '.zip', '.rar', '.7z', '.gz', '.tar',
+    '.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg',
+    '.mp3', '.mp4', '.avi', '.mov', '.wmv',
+    '.exe', '.dll', '.so', '.dylib',
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx'
+];
+
+// Custom ignored items - Add your own here
+const CUSTOM_IGNORED_FILES = [
+    // 'secrets.json',
+    // 'private.key'
+];
+
+const CUSTOM_IGNORED_PATHS = [
+    // 'app/specific-folder/specific-file.js'
+];
+
+// Combine all ignored files
+const ALL_IGNORED_FILES = [...IGNORED_FILES, ...CUSTOM_IGNORED_FILES];
+const ALL_IGNORED_FILE_PATHS = [...IGNORED_FILE_PATHS, ...CUSTOM_IGNORED_PATHS];
+
+// Output file configuration
+const OUTPUT_FILE = path.join(process.cwd(), 'code.txt');
+const OUTPUT_MIN_FILE = path.join(process.cwd(), 'code.min.txt');
+
+// Statistics tracking
+let stats = {
+    processed: 0,
+    skipped: 0,
+    errors: 0
+};
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Get normalized relative path from root directory
+ */
+function getRelativePath(filePath) {
+    const relative = path.relative(process.cwd(), filePath);
+    return relative ? relative.replace(/\\/g, '/') : '.';
+}
+
+/**
+ * Check if a directory should be ignored
+ */
+function shouldIgnoreDirectory(dirPath) {
+    const relativePath = getRelativePath(dirPath);
+    const dirName = path.basename(dirPath);
+
+    // Check by directory name (global)
+    if (IGNORED_DIRECTORIES.includes(dirName)) {
+        return true;
+    }
+
+    // Check exact directory path
+    if (IGNORED_DIRECTORY_PATHS.includes(relativePath)) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Check if a file should be ignored
+ */
+function shouldIgnoreFile(fileName, filePath) {
+    const relativePath = getRelativePath(filePath);
+    const ext = path.extname(fileName).toLowerCase();
+
+    // Check by filename
+    if (ALL_IGNORED_FILES.includes(fileName)) {
+        return true;
+    }
+
+    // Check by extension
+    if (IGNORED_FILE_EXTENSIONS.includes(ext)) {
+        return true;
+    }
+
+    // Check exact file path
+    if (ALL_IGNORED_FILE_PATHS.includes(relativePath)) {
+        return true;
+    }
+
+    // Check if file is in an ignored directory
+    const fileDir = path.dirname(relativePath);
+    if (IGNORED_DIRECTORY_PATHS.includes(fileDir)) {
+        return true;
+    }
+
+    // Check hidden files (except allowed ones)
+    if (fileName.startsWith('.') && !fileName.startsWith('.env')) {
+        const allowedHidden = ['.eslintrc', '.prettierrc', '.babelrc', '.npmrc'];
+        if (!allowedHidden.some(allowed => fileName.startsWith(allowed))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Recursively traverse directory and collect all non-ignored files
+ */
+async function traverseDirectory(dirPath) {
+    const files = [];
+
+    // Skip if this directory should be ignored
+    if (shouldIgnoreDirectory(dirPath)) {
+        console.log(`  ⏭️  Skipping directory: ${getRelativePath(dirPath)}`);
+        stats.skipped++;
+        return files;
+    }
+
+    try {
+        const items = await readdir(dirPath);
+
+        for (const item of items) {
+            const fullPath = path.join(dirPath, item);
+
+            try {
+                const fileStat = await stat(fullPath);
+
+                if (fileStat.isDirectory()) {
+                    const subFiles = await traverseDirectory(fullPath);
+                    files.push(...subFiles);
+                } else if (fileStat.isFile()) {
+                    if (!shouldIgnoreFile(item, fullPath)) {
+                        files.push(fullPath);
+                    } else {
+                        console.log(`  ⏭️  Skipping file: ${getRelativePath(fullPath)}`);
+                        stats.skipped++;
+                    }
+                }
+            } catch (err) {
+                console.error(`  ❌ Error accessing ${fullPath}: ${err.message}`);
+                stats.errors++;
+            }
+        }
+    } catch (err) {
+        console.error(`  ❌ Error reading directory ${dirPath}: ${err.message}`);
+        stats.errors++;
+    }
+
+    return files;
+}
+
+/**
+ * Read file content with encoding detection
+ */
+async function readFileContent(filePath) {
+    try {
+        const buffer = await readFile(filePath);
+
+        // Try UTF-8 first
+        try {
+            return buffer.toString('utf8');
+        } catch (err) {
+            // Fallback to latin1 for binary files
+            return `[BINARY FILE]\n${buffer.toString('base64')}\n[/BINARY FILE]`;
+        }
+    } catch (err) {
+        console.error(`  ❌ Error reading file: ${err.message}`);
+        stats.errors++;
+        return `[ERROR: ${err.message}]`;
+    }
+}
+
+/**
+ * Format file size for display
+ */
+function formatFileSize(bytes) {
+    if (bytes < 1024) return `${bytes} bytes`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+/**
+ * Display configuration summary
+ */
+function displayConfig() {
+    console.log('\n⚙️  Configuration:');
+    console.log(`  • Ignored directories (by name): ${IGNORED_DIRECTORIES.length}`);
+    console.log(`  • Ignored directory paths: ${IGNORED_DIRECTORY_PATHS.length}`);
+    console.log(`  • Ignored files (by name): ${ALL_IGNORED_FILES.length}`);
+    console.log(`  • Ignored file paths: ${ALL_IGNORED_FILE_PATHS.length}`);
+    console.log(`  • Ignored extensions: ${IGNORED_FILE_EXTENSIONS.length}`);
+
+    if (IGNORED_DIRECTORY_PATHS.length > 0) {
+        console.log('\n  📁 Ignored directories:');
+        IGNORED_DIRECTORY_PATHS.forEach(dir => console.log(`    - ${dir}`));
+    }
+
+    if (ALL_IGNORED_FILE_PATHS.length > 0) {
+        console.log('\n  📄 Ignored files:');
+        ALL_IGNORED_FILE_PATHS.forEach(file => console.log(`    - ${file}`));
+    }
+}
+
+// ============================================
+// MAIN FUNCTIONS
+// ============================================
+
+/**
+ * Create the complete source code document
+ */
+async function createCodeDocument() {
+    console.log('\n📂 Scanning directory:', process.cwd());
+    console.log('🔍 Gathering files...\n');
+
+    const allFiles = await traverseDirectory(process.cwd());
+
+    if (allFiles.length === 0) {
+        console.log('❌ No files found to process!');
+        return null;
+    }
+
+    console.log(`\n📊 Found ${allFiles.length} files to process\n`);
+
+    let outputContent = '';
+
+    // Process each file
+    for (let i = 0; i < allFiles.length; i++) {
+        const filePath = allFiles[i];
+        const relativePath = getRelativePath(filePath);
+
+        console.log(`📝 Processing (${i + 1}/${allFiles.length}): ${relativePath}`);
+
+        // Add file header with path
+        outputContent += `\n${'='.repeat(80)}\n`;
+        outputContent += `FILE: ${relativePath}\n`;
+        outputContent += `${'='.repeat(80)}\n\n`;
+
+        // Add file content
+        const content = await readFileContent(filePath);
+        outputContent += content;
+
+        // Ensure trailing newline
+        if (content && !content.endsWith('\n')) {
+            outputContent += '\n';
+        }
+
+        stats.processed++;
+    }
+
+    // Write to file
+    try {
+        await writeFile(OUTPUT_FILE, outputContent, 'utf8');
+        console.log(`\n✅ Created: ${OUTPUT_FILE}`);
+        console.log(`📏 Size: ${formatFileSize(outputContent.length)}`);
+        return outputContent;
+    } catch (err) {
+        console.error(`❌ Error writing file: ${err.message}`);
+        return null;
+    }
+}
+
+/**
+ * Create minified version (remove all whitespace)
+ */
+async function createMinifiedVersion(sourceContent) {
+    if (!sourceContent) {
+        console.log('❌ No source content to minify');
+        return false;
+    }
+
+    console.log('\n⚡ Creating minified version...');
+
+    try {
+        // Remove all whitespace
+        const minified = sourceContent.replace(/\s/g, '');
+
+        await writeFile(OUTPUT_MIN_FILE, minified, 'utf8');
+        console.log(`✅ Created: ${OUTPUT_MIN_FILE}`);
+        console.log(`📏 Size: ${formatFileSize(minified.length)}`);
+
+        const reduction = ((1 - minified.length / sourceContent.length) * 100).toFixed(2);
+        console.log(`📉 Reduction: ${reduction}%`);
+
+        return true;
+    } catch (err) {
+        console.error(`❌ Error creating minified file: ${err.message}`);
+        return false;
+    }
+}
+
+/**
+ * Display final summary
+ */
+function displaySummary() {
+    console.log('\n' + '='.repeat(50));
+    console.log('📊 SUMMARY');
+    console.log('='.repeat(50));
+    console.log(`✅ Files processed: ${stats.processed}`);
+    console.log(`⏭️  Files/directories skipped: ${stats.skipped}`);
+    console.log(`❌ Errors encountered: ${stats.errors}`);
+    console.log(`📁 Output files:`);
+    console.log(`   - ${path.basename(OUTPUT_FILE)}`);
+    console.log(`   - ${path.basename(OUTPUT_MIN_FILE)}`);
+    console.log('\n🎉 Done!');
+}
+
+// ============================================
+// SCRIPT ENTRY POINT
+// ============================================
+
+async function main() {
+    console.log('🔍 Source Code Collector');
+    console.log('='.repeat(50));
+
+    displayConfig();
+
+    try {
+        const sourceContent = await createCodeDocument();
+
+        if (!sourceContent) {
+            console.log('❌ Failed to create code document');
+            return;
+        }
+
+        await createMinifiedVersion(sourceContent);
+        displaySummary();
+
+    } catch (error) {
+        console.error('💥 Unexpected error:', error.message);
+        if (error.stack) console.error(error.stack);
+    }
+}
+
+// Run the script
+main();
+
+================================================================================
+FILE: components/profile/certification.json
+================================================================================
+
+{
+  "collectionName": "components_profile_certifications",
+  "info": {
+    "displayName": "Certification",
+    "icon": "award"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "issuing_body": {
+      "type": "string"
+    },
+    "issue_date": {
+      "type": "date"
+    },
+    "expiry_date": {
+      "type": "date"
+    },
+    "credential_url": {
+      "type": "string"
+    }
+  }
+}
+
+================================================================================
+FILE: extensions/users-permissions/content-types/user/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "up_users",
+  "info": {
+    "name": "user",
+    "description": "",
+    "singularName": "user",
+    "pluralName": "users",
+    "displayName": "User"
+  },
+  "options": {
+    "draftAndPublish": false,
+    "timestamps": true
+  },
+  "attributes": {
+    "username": {
+      "type": "string",
+      "minLength": 3,
+      "unique": true,
+      "configurable": false,
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "minLength": 6,
+      "configurable": false,
+      "required": true
+    },
+    "provider": {
+      "type": "string",
+      "configurable": false
+    },
+    "password": {
+      "type": "password",
+      "minLength": 6,
+      "configurable": false,
+      "private": true,
+      "searchable": false
+    },
+    "resetPasswordToken": {
+      "type": "string",
+      "configurable": false,
+      "private": true,
+      "searchable": false
+    },
+    "confirmationToken": {
+      "type": "string",
+      "configurable": false,
+      "private": true,
+      "searchable": false
+    },
+    "confirmed": {
+      "type": "boolean",
+      "default": false,
+      "configurable": false
+    },
+    "blocked": {
+      "type": "boolean",
+      "default": false,
+      "configurable": false
+    },
+    "role": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.role",
+      "inversedBy": "users",
+      "configurable": false
+    },
+    "is_anonymous": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_verified_human": {
+      "type": "boolean",
+      "default": false
+    },
+    "profile_completion_skilled": {
+      "type": "integer",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    "profile_completion_professional": {
+      "type": "integer",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    "trust_score_yes": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "native_last_city": {
+      "type": "string"
+    },
+    "country": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::country.country",
+      "inversedBy": "users"
+    },
+    "skilled_profile": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::skilled-profile.skilled-profile",
+      "mappedBy": "user"
+    },
+    "professional_profile": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::professional-profile.professional-profile",
+      "mappedBy": "user"
+    },
+    "wallet": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::wallet.wallet",
+      "mappedBy": "user"
+    },
+    "posted_jobs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::job.job",
+      "mappedBy": "owner"
+    },
+    "bids": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::bid.bid",
+      "mappedBy": "user"
+    },
+    "verification_submissions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::verification-submission.verification-submission",
+      "mappedBy": "user"
+    }
+  }
+}
+
+================================================================================
+FILE: extensions/users-permissions/strapi-server.ts
+================================================================================
+
+// src/extensions/users-permissions/strapi-server.ts
+
+/**
+ * Adds POST /api/users/me/location. The RN wrapper posts raw
+ * { latitude, longitude }; the server reverse-geocodes and stores ONLY
+ * the resolved city (native_last_city). Raw coordinates are never
+ * persisted or returned
+ */
+export default (plugin: any) => {
+  plugin.controllers.user.updateMyLocation = async (ctx: any) => {
+    try {
+      const user = ctx.state.user;
+      if (!user) return ctx.unauthorized('You must be logged in to update location.');
+
+      const { latitude, longitude } = ctx.request.body || {};
+      if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+        return ctx.badRequest('latitude and longitude (numbers) are required.');
+      }
+
+      const apiKey = process.env.GOOGLE_GEOCODING_API_KEY;
+      if (!apiKey) {
+        strapi.log.error('GOOGLE_GEOCODING_API_KEY is not configured.');
+        return ctx.internalServerError('Location service is not configured.');
+      }
+
+      let resolvedCity: string | null = null;
+      try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&result_type=locality&key=${apiKey}`;
+        const response = await fetch(url);
+        const geo: any = await response.json();
+        const localityComponent = geo?.results?.[0]?.address_components?.find((c: any) =>
+          c.types.includes('locality')
+        );
+        resolvedCity = localityComponent ? localityComponent.long_name : null;
+      } catch (err) {
+        strapi.log.error('Reverse geocoding failed', err);
+        return ctx.internalServerError('Could not resolve location.');
+      }
+
+      if (!resolvedCity) return ctx.badRequest('Could not resolve a city for the given coordinates.');
+
+      const updated: any = await strapi.db.query('plugin::users-permissions.user').update({
+        where: { id: user.id },
+        data: { native_last_city: resolvedCity },
+      });
+
+      ctx.send({ success: true, native_last_city: updated.native_last_city });
+    } catch (error) {
+      strapi.log.error('Error updating user location:', error);
+      ctx.internalServerError('Failed to update user location');
+    }
+  };
+
+  plugin.routes['content-api'].routes.push({
+    method: 'POST',
+    path: '/users/me/location',
+    handler: 'user.updateMyLocation',
+    config: { policies: [], middlewares: [], prefix: '' },
+  });
+
+  return plugin;
+};
+
+================================================================================
+FILE: index.ts
+================================================================================
+
+// import type { Core } from '@strapi/strapi';
+
+export default {
+  /**
+   * An asynchronous register function that runs before
+   * your application is initialized.
+   *
+   * This gives you an opportunity to extend code.
+   */
+  register(/* { strapi }: { strapi: Core.Strapi } */) {},
+
+  /**
+   * An asynchronous bootstrap function that runs before
+   * your application gets started.
+   *
+   * This gives you an opportunity to set up your data model,
+   * run jobs, or perform some special logic.
+   */
+  bootstrap(/* { strapi }: { strapi: Core.Strapi } */) {},
+};

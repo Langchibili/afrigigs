@@ -374,13 +374,2855 @@ Building directly on the blueprint's schema, with additions needed for a product
 | Low-end Android performance with heavy animation | Gate non-essential Framer Motion effects behind a device-capability/`prefers-reduced-motion` check |
 
 ---
+================================================================================
+AFRIGIGS — FRONTEND DEVELOPMENT REFERENCE
+Design Schema + Full Backend Documentation (single reference file)
+================================================================================
 
-## 11. Immediate Next Steps
+This file is the single source of truth for building the AfriGigs Next.js
+frontend. It combines:
+  PART A — Visual design system (derived from the original blueprint's
+           Pan-African dark theme, expanded into MUI theme tokens)
+  PART B — Full page-by-page build list with purpose, components, and the
+           exact backend endpoints each page calls
+  PART C — Asset inventory (icons, illustrations, images)
+  PART D — Full backend documentation (content types, fields, custom
+           endpoints, business rules, permissions) — everything the
+           frontend needs to know about the Strapi 5 API it's talking to
 
-Pick a starting point and I'll build it out in full:
-1. **MUI theme file + custom `GridBox`/`Stack` primitives** (the actual design-system code)
-2. **Strapi schema + lifecycle scripts** (SQL/JSON schema plus the bid validation hook, ready to drop in)
-3. **Figma-to-code `GigCard` + `OnboardingStepper` components** with Framer Motion wired in
-4. **React Native GPS/push bridge module**
+Stack constraints carried over from the brief:
+  - Next.js (web) + React Native WebView wrapper (mobile)
+  - MUI (Material UI) as the component library
+  - Framer Motion for animation
+  - CUSTOM GRID SYSTEM — MUI's Grid/Grid2 is explicitly NOT used anywhere.
+    All layout uses the custom Stack/GridBox/Container primitives defined
+    in Part A.
+  - Backend: Strapi 5 + SQLite (dev) / MySQL (prod optional)
+  - Payments: Paystack, Flutterwave, DPO
+  - Project name: AfriGigs
 
-Let me know which one to build first.
+================================================================================
+PART A — VISUAL DESIGN SYSTEM
+================================================================================
+
+A.1 — Brand Direction
+--------------------------------------------------------------------------------
+"Clean but beautiful, modern and trusty." A high-contrast dark UI inspired by
+Pan-African colors, refined with layered depth (soft shadows, faint glows)
+instead of flat blocks, so it reads as a premium fintech-grade product rather
+than a generic marketplace template. Dark palette maximizes outdoor daylight
+readability and OLED battery life, both practical concerns for the target
+markets.
+
+A.2 — Color Tokens (MUI theme palette)
+--------------------------------------------------------------------------------
+Base colors are carried directly from the original blueprint, brightened
+slightly where needed to clear WCAG AA contrast on a black background.
+
+  primary (Unity Green — "Find Work" CTAs, positive balances, active states)
+    main:  #00BFA6
+    dark:  #009688   (original blueprint value, used for borders/outlines)
+    light: #5BE0CB
+
+  secondary (Gold — ratings, bid values, premium/professional indicators)
+    main:  #FFC107
+    dark:  #C79100
+    light: #FFD54F
+
+  error (Historical Struggle Red — flags, errors, low-bids, unverified tags)
+    main:  #EF5350
+    dark:  #D32F2F   (original blueprint value)
+
+  background
+    default: #121212   (Absolute Void Black — page background)
+    paper:   #1A1E1E   (card/surface background, slightly lifted)
+
+  divider: rgba(255,255,255,0.08)
+
+  text
+    primary:   #F5F5F5
+    secondary: rgba(245,245,245,0.68)
+    disabled:  rgba(245,245,245,0.38)
+
+Semantic extensions (custom theme keys, not native MUI):
+  theme.custom.trustHigh:   #00BFA6   (trust score / verified badge fill)
+  theme.custom.trustMedium: #FFC107
+  theme.custom.trustLow:    #EF5350
+  theme.custom.glassBorder: rgba(255,255,255,0.06)
+
+A.3 — Elevation & Shadows
+--------------------------------------------------------------------------------
+Replace MUI's flat default elevation scale with a custom soft-shadow scale.
+Define as theme.shadows overrides or a `elevationTokens` helper:
+
+  level 0 (flat):        none
+  level 1 (card resting): 0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04)
+  level 2 (card hover):   0 12px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)
+  level 3 (modal/sheet):  0 24px 64px rgba(0,0,0,0.65)
+  glow-primary (active/selected state):
+                          0 0 20px rgba(0,191,166,0.15)
+  glow-gold (premium/verified badge):
+                          0 0 16px rgba(255,193,7,0.20)
+
+A.4 — Gradients (used sparingly, as accents only — never full backgrounds)
+--------------------------------------------------------------------------------
+  CTA button fill:      linear-gradient(135deg, #00BFA6 0%, #009688 100%)
+  Verified badge sheen: linear-gradient(120deg, #FFD54F 0%, #FFC107 50%, #FFD54F 100%)
+  Hero vignette:        radial-gradient(circle at 50% 0%, rgba(0,191,166,0.12) 0%, transparent 60%)
+  Wallet balance card:  linear-gradient(160deg, #1A1E1E 0%, #121212 100%) + 1px glassBorder
+
+A.5 — Typography
+--------------------------------------------------------------------------------
+  UI / body font:      Inter (fallback: -apple-system, Segoe UI, Roboto)
+  Numeric / tabular:   Space Grotesk (tabular figures — wallet balances, bid
+                       amounts, trust scores never "jitter" on update)
+  Scale (MUI variant → size/weight/line-height):
+    h1  32px / 700 / 1.2   — page hero titles only
+    h2  26px / 700 / 1.25  — section headers
+    h3  20px / 600 / 1.3   — card titles, modal titles
+    subtitle1  16px / 600 / 1.4
+    body1  15px / 400 / 1.5   — default reading text
+    body2  13px / 400 / 1.5   — secondary/meta text
+    caption  12px / 500 / 1.4 — badges, timestamps, chip labels
+  Letter-spacing: -0.01em on h1/h2 for a tighter, modern feel.
+
+A.6 — Custom Grid / Layout System (MUI Grid is NOT used)
+--------------------------------------------------------------------------------
+Build once, reuse everywhere:
+
+  components/layout/Stack.tsx
+    Thin wrapper over CSS flexbox.
+    Props: direction ('row'|'column'), gap (theme.spacing units), align,
+    justify, wrap, responsive overrides via a breakpoint-keyed object
+    (e.g. direction={{ xs: 'column', md: 'row' }}).
+
+  components/layout/GridBox.tsx
+    Thin wrapper over native CSS Grid.
+    Props: columns (number OR breakpoint-keyed object, e.g.
+    { xs: 1, sm: 2, md: 3, lg: 4 }), gap, rowGap, columnGap, autoFlow.
+    Resolves to `display:grid; grid-template-columns: repeat(n, 1fr); gap:…`
+    with breakpoints pulled from theme.breakpoints so spacing/typography
+    stay token-consistent with MUI while the layout math stays fully custom
+    (supports asymmetric featured-card layouts, masonry-style profile
+    galleries, etc. that MUI's Grid can't easily do).
+
+  components/layout/Container.tsx
+    Max-width shell + responsive horizontal padding.
+    Props: maxWidth ('sm'|'md'|'lg'|'xl'|'full'), disableGutters.
+
+  Usage example (gig list):
+    <GridBox columns={{ xs: 1, sm: 2, md: 3, lg: 4 }} gap={3}>
+      {gigs.map(g => <GigCard key={g.id} {...g} />)}
+    </GridBox>
+
+  Rule: NEVER import Grid or Grid2 from '@mui/material' anywhere in this
+  project. Lint rule / code review checklist item.
+
+A.7 — Motion (Framer Motion)
+--------------------------------------------------------------------------------
+  Page transitions: shared-layout fade/slide via AnimatePresence + layoutId
+    between /gigs list and /gigs/[id] detail — the tapped GigCard animates
+    into the detail hero position.
+  Micro-interactions: buttons scale to 0.97 + shadow compresses on press;
+    successful bid submission draws a checkmark via pathLength animation.
+  List population: skeleton → content via staggerChildren (staggered
+    fade + slide-up, ~40ms stagger) — avoids layout pop-in.
+  Verification badge: subtle looping gradient-position shimmer while
+    "Unverified"; on approval, morphs to a solid check with a brief scale
+    pulse.
+  Bid re-ranking: GigCard/BidTicket lists use the `layout` prop so
+    re-sorting animates position changes rather than jump-cutting.
+  Accessibility: every animation gets a prefers-reduced-motion fallback
+    (opacity-only transition, no movement/scale).
+
+A.8 — Core Reusable Components
+--------------------------------------------------------------------------------
+  GigCard            compact + expanded variants; shows title, budget,
+                      scope badge (Local/Global), bid count, target city
+  TrustBadge          color-coded ring/chip driven by trust_score_yes
+  VerifiedTag         "✓ Verified" / "⚠ Unverified" per blueprint's caution
+                      badge concept
+  BidTicket           bid amount input + submit; renders inline validation
+                      errors returned by the bid-floor lifecycle check
+  WalletBalanceChip   tabular-figure balance display, gradient background
+  ProfileCompletionRing  animated SVG progress ring (skilled/professional %)
+  CountryCurrencySelector  drives localized min-bid display + currency symbol
+  OnboardingStepper   custom-built stepper (not MUI Stepper visuals, same
+                      a11y pattern) matching the Instant-Onboarding flow
+  EscrowStatusTimeline  visual funded → held → released timeline
+  DisputeFlagBanner    shown on jobs auto-flagged by the hourly cron job
+
+================================================================================
+PART B — PAGES: FULL BUILD LIST, PURPOSE, AND BACKEND CALLS
+================================================================================
+
+For every page: route, purpose, key components used, and exact backend
+endpoints it talks to (see Part D for full endpoint documentation).
+
+--------------------------------------------------------------------------------
+1. Landing — "/"
+--------------------------------------------------------------------------------
+Purpose: Public marketing entry point. Convert visitors into signups.
+Content: value proposition, live gig ticker (recent open jobs, anonymized),
+localized terminology preview (uses country.gig_local_term_* to show "Find a
+Gig" vs "Find a Job" depending on detected/selected country).
+Components: Hero (gradient vignette), GridBox of feature cards, live gig
+ticker (auto-scrolling GigCard list), country selector.
+Backend calls:
+  GET /api/countries (public — bootstrap grants public read)
+  GET /api/jobs?filters[status]=open&sort=createdAt:desc&pagination[limit]=6
+
+--------------------------------------------------------------------------------
+2. Onboarding — "/onboarding"
+--------------------------------------------------------------------------------
+Purpose: Implements the blueprint's "Instant Onboarding" flow — register,
+add ID + basic details, pick skills category, immediately unlock browse/bid
+with an Unverified badge.
+Steps (OnboardingStepper): Account (email/username/password) → Country/City
+→ Profile type (Skilled vs Professional) → Skills/category selection → ID
+number → Done (redirect to dashboard, Unverified badge visible).
+Components: OnboardingStepper, CountryCurrencySelector, skills multi-select
+(from SkillsCatalog), VerifiedTag (shown as "Unverified" preview).
+Backend calls:
+  POST /api/auth/local/register
+  GET  /api/countries
+  GET  /api/skills-catalogs
+  POST /api/skilled-profiles  (or /api/professional-profiles)
+  PUT  /api/users/:id  (sets country relation, profile_completion_skilled)
+
+--------------------------------------------------------------------------------
+3. Login — "/login"
+--------------------------------------------------------------------------------
+Purpose: Standard auth entry.
+Backend calls:
+  POST /api/auth/local
+
+--------------------------------------------------------------------------------
+4. Dashboard — "/dashboard"
+--------------------------------------------------------------------------------
+Purpose: Role-aware home. Skilled/Professional workers see active bids +
+assigned jobs + wallet snapshot; Job Posters see their posted jobs + pending
+bids to review.
+Components: WalletBalanceChip, ProfileCompletionRing, GridBox of "My active
+jobs" GigCards, DisputeFlagBanner (if any job of theirs is disputed).
+Backend calls:
+  GET /api/users/me?populate=wallet,skilled_profile,professional_profile
+  GET /api/jobs?filters[owner][id]=:me OR filters[assigned_worker][id]=:me
+  GET /api/wallets?filters[user][id]=:me
+
+--------------------------------------------------------------------------------
+5. Browse Gigs — "/gigs"
+--------------------------------------------------------------------------------
+Purpose: Search/filter open gigs. Localized term used as page title (e.g.
+"Ganyu" in Zambia if configured).
+Components: GridBox (responsive gig card grid), filter sidebar (skill
+category, scope Local/Global, city, budget range), OnboardingStepper CTA
+banner for unverified users encouraging verification.
+Backend calls:
+  GET /api/jobs?filters[status]=open&filters[skills_required][name][$in]=...
+      &filters[country][id]=...&populate=budget_currency,skills_required
+
+--------------------------------------------------------------------------------
+6. Gig Detail — "/gigs/[id]"
+--------------------------------------------------------------------------------
+Purpose: Full job description + bid panel + ranked bid list (for the job
+owner) + messaging entry point.
+Components: BidTicket (bid submit form, surfaces server-side floor-check
+errors inline), EscrowStatusTimeline, ranked bid list (TrustBadge per
+bidder), "Message poster/bidder" button.
+Backend calls:
+  GET  /api/jobs/:id?populate=owner,country,budget_currency,skills_required
+  GET  /api/jobs/:id/rank-bids        (CUSTOM — see Part D.5)
+  POST /api/bids                       (create a bid; server enforces floor)
+  GET  /api/conversations?filters[job][id]=:id
+
+--------------------------------------------------------------------------------
+7. Post a Job — "/gigs/new"
+--------------------------------------------------------------------------------
+Purpose: Employer flow — create a job, choose Local vs For-Everyone scope,
+set budget, fund escrow.
+Components: multi-step form (details → skills required → budget/currency →
+scope → review), payment gateway selection (Paystack/Flutterwave/DPO).
+Backend calls:
+  POST /api/jobs
+  POST /api/escrow-transactions        (funds the job; gateway ref stored)
+  (gateway checkout redirect handled client-side per provider SDK)
+
+--------------------------------------------------------------------------------
+8. Public Profile — "/profile/[id]"
+--------------------------------------------------------------------------------
+Purpose: Shown to other users when viewing a bidder/worker. Trust score,
+badges, review history, portfolio/certifications if Professional.
+Components: TrustBadge, VerifiedTag, ProfileCompletionRing, certification
+list (from ProfessionalProfile.certifications component).
+Backend calls:
+  GET /api/users/:id?populate=skilled_profile,professional_profile,country
+  GET /api/reviews?filters[to_user][id]=:id&populate=from_user
+
+--------------------------------------------------------------------------------
+9. Edit Profile — "/profile/edit"
+--------------------------------------------------------------------------------
+Purpose: Skilled/Professional profile completion flow — drives
+profile_completion_skilled / profile_completion_professional percentages
+that feed bid ranking.
+Components: ProfileCompletionRing (live-updates as fields are filled),
+resume upload (Professional), skills multi-select (Skilled), certification
+repeatable-component editor.
+Backend calls:
+  PUT /api/skilled-profiles/:id
+  PUT /api/professional-profiles/:id  (media upload via /api/upload)
+
+--------------------------------------------------------------------------------
+10. Verification — "/verify"
+--------------------------------------------------------------------------------
+Purpose: Scripted video-selfie upload per blueprint ("Hold your ID next to
+your face..."). Clears the Unverified badge once admin-approved.
+Components: on-screen script prompt, video capture/upload widget,
+VerifiedTag (shows "Pending review" state after submission).
+Backend calls:
+  POST /api/upload                              (video file)
+  POST /api/verification-submissions             (status defaults 'pending')
+  GET  /api/verification-submissions?filters[user][id]=:me  (poll status)
+
+--------------------------------------------------------------------------------
+11. Wallet — "/wallet"
+--------------------------------------------------------------------------------
+Purpose: Escrow balance, pending balance, withdrawal, transaction history,
+EscrowStatusTimeline per active job.
+Components: WalletBalanceChip (gradient card), transaction list, withdraw
+CTA (initiates mobile-money payout via gateway), "Release funds" button
+(job-poster view only, calls escrow release).
+Backend calls:
+  GET  /api/wallets?filters[user][id]=:me
+  GET  /api/escrow-transactions?filters[job][owner][id]=:me
+  POST /api/escrow-transactions/:id/release      (CUSTOM — see Part D.5,
+                                                   job-poster only)
+
+--------------------------------------------------------------------------------
+12. Messages — "/messages" and "/messages/[conversationId]"
+--------------------------------------------------------------------------------
+Purpose: Per-job chat threads between poster and worker.
+Components: conversation list, message thread (bubble UI), unread badge.
+Backend calls:
+  GET  /api/conversations?filters[participants][id]=:me&populate=job,messages
+  POST /api/messages
+
+--------------------------------------------------------------------------------
+13. Admin/Moderation note
+--------------------------------------------------------------------------------
+Verification approval, review moderation, and dispute resolution are handled
+in the Strapi admin panel itself (not a custom frontend page) — the
+frontend only needs to reflect status changes (Verified badge, Disputed
+banner) once an admin acts.
+
+================================================================================
+PART C — ASSET INVENTORY
+================================================================================
+
+C.1 — Iconography (single icon set, consistent stroke weight ~1.5px)
+--------------------------------------------------------------------------------
+  Navigation: home, search, briefcase (gigs), wallet, message-circle, user
+  Status: check-circle (verified), alert-triangle (unverified/dispute),
+          clock (pending), shield-check (trust), lock (escrow held)
+  Actions: plus-circle (post job), upload (verification/resume), send
+          (message), map-pin (location/target city), filter-lines
+  Payment: credit-card, mobile-money icon (custom — M-Pesa/mobile wallet
+          style), bank
+
+C.2 — Illustrations (flat/geometric style matching the Pan-African palette,
+      primary + gold accents on dark backgrounds — avoid photographic
+      stock imagery for empty states)
+--------------------------------------------------------------------------------
+  - Onboarding welcome illustration
+  - "No gigs found" empty state
+  - "No messages yet" empty state
+  - Verification success illustration (checkmark + shield motif)
+  - Escrow explainer illustration (3-step funded → held → released)
+  - 404 / error page illustration
+
+C.3 — Photography / avatars
+--------------------------------------------------------------------------------
+  - Default avatar placeholder (geometric monogram, generated per-user from
+    initials — no stock photos)
+  - Country flag icons for the 7 seeded countries (Zambia, Nigeria, Kenya,
+    Ghana, South Africa, Uganda, Tanzania)
+
+C.4 — Fonts (self-hosted or Google Fonts)
+--------------------------------------------------------------------------------
+  Inter (400/500/600/700), Space Grotesk (500/700 — numeric contexts only)
+
+C.5 — Lottie / motion assets (optional, complements Framer Motion)
+--------------------------------------------------------------------------------
+  - Verification "shimmer" loop (or built in CSS/Framer, see A.7)
+  - Success checkmark draw-in (can be pure Framer Motion pathLength, no
+    Lottie file needed)
+
+================================================================================
+PART D — FULL BACKEND DOCUMENTATION (Strapi 5)
+================================================================================
+
+D.1 — Content Types (schemas)
+--------------------------------------------------------------------------------
+
+Currency (api::currency.currency)
+  code                    string, unique, 3-letter ISO (e.g. ZMW, NGN)
+  symbol                  string (e.g. ZK, ₦, KSh)
+  minimum_national_bid    decimal
+  country                 relation 1:1 → Country
+
+Country (api::country.country)
+  name                        string, unique
+  iso_code                    string, unique, 2-letter
+  currency                    relation 1:1 → Currency
+  cities                      json array of strings
+  gig_local_term_singular     string, default "Gig"
+  gig_local_term_plural       string, default "Gigs"
+  users                       relation 1:M → User
+  jobs                        relation 1:M → Job
+
+SkillsCatalog (api::skills-catalog.skills-catalog)
+  name        string, unique
+  category    enum: Manual Trades | Digital Services | Domestic Services |
+              Transport & Logistics | Creative & Media | Professional Services
+  icon        string (icon key, see Part C.1)
+  skilled_profiles  relation M:M → SkilledProfile
+
+SkilledProfile (api::skilled-profile.skilled-profile)
+  national_id_number   string, PRIVATE (never exposed in API responses)
+  skills_category       enum (same list as SkillsCatalog.category)
+  skills                 relation M:M → SkillsCatalog
+  description            text
+  user                    relation 1:1 → User
+
+ProfessionalProfile (api::professional-profile.professional-profile)
+  resume_file          media (single file)
+  education_history      json array
+  certifications          repeatable component (profile.certification):
+                            title, issuing_body, issue_date, expiry_date,
+                            credential_url
+  experience_summary      text
+  user                     relation 1:1 → User
+
+Job (api::job.job)
+  title                          string, required, max 120
+  description                    richtext, required
+  owner                           relation M:1 → User
+  country                         relation M:1 → Country
+  target_city                     string
+  scope                            enum: LOCAL | FOR_EVERYONE (default LOCAL)
+  status                           enum: open | in_progress | completed |
+                                   disputed | cancelled (default open)
+  budget_currency                  relation M:1 → Currency
+  budget_amount                    decimal, required
+  escrow_status                    enum: unfunded | funded | held | released |
+                                   refunded (default unfunded)
+  skills_required                  relation M:M → SkillsCatalog
+  bids                              relation 1:M → Bid
+  escrow_transactions                relation 1:M → EscrowTransaction
+  assigned_worker                    relation M:1 → User
+  completed_at                       datetime
+  completion_confirmation_deadline    datetime (drives the hourly dispute
+                                       auto-flag cron, see D.4)
+
+Bid (api::bid.bid)
+  job                        relation M:1 → Job
+  user                        relation M:1 → User
+  proposed_amount_local        decimal
+  proposed_amount_usd           decimal
+  message                        text
+  status                          enum: pending | accepted | rejected |
+                                 withdrawn (default pending)
+  ── Server-enforced (see D.4): floor validation on create, amounts
+     immutable after creation.
+
+EscrowTransaction (api::escrow-transaction.escrow-transaction)
+  job              relation M:1 → Job
+  amount            decimal, required
+  currency           relation M:1 → Currency
+  gateway             enum: paystack | flutterwave | dpo
+  gateway_ref           string, required, unique
+  status                 enum: funded | held | released | refunded | failed
+                        (default funded)
+
+Wallet (api::wallet.wallet)
+  user               relation 1:1 → User
+  balance             decimal, default 0
+  pending_balance       decimal, default 0
+  currency               relation M:1 → Currency
+
+VerificationSubmission (api::verification-submission.verification-submission)
+  user             relation M:1 → User
+  video             media (single video)
+  status             enum: pending | approved | rejected (default pending)
+  reviewer_notes       text
+  reviewed_by            relation M:1 → admin::user
+  reviewed_at              datetime
+  ── Server-enforced (see D.4): approving sets user.is_verified_human = true.
+
+Review (api::review.review)
+  job          relation M:1 → Job
+  from_user     relation M:1 → User
+  to_user        relation M:1 → User
+  rating          integer, 1-5, required
+  comment          text
+  ── Server-enforced (see D.4): rating >= 4 increments to_user.trust_score_yes
+
+Conversation (api::conversation.conversation)
+  job              relation 1:1 → Job
+  participants       relation M:M → User
+  messages             relation 1:M → Message
+
+Message (api::message.message)
+  conversation    relation M:1 → Conversation
+  sender           relation M:1 → User
+  body              text, required
+  read_at            datetime
+
+User (plugin::users-permissions.user, extended)
+  Standard fields: username, email, password, confirmed, blocked, role
+  AfriGigs additions:
+    is_anonymous                       boolean, default false
+    is_verified_human                    boolean, default false
+    profile_completion_skilled             integer 0-100, default 0
+    profile_completion_professional          integer 0-100, default 0
+    trust_score_yes                            integer, default 0
+    native_last_city                             string (set ONLY via the
+                                                  location endpoint below —
+                                                  raw GPS never stored)
+    country                                        relation M:1 → Country
+    skilled_profile / professional_profile           relation 1:1
+    wallet                                             relation 1:1
+    posted_jobs                                          relation 1:M → Job
+    bids                                                   relation 1:M → Bid
+    verification_submissions                                relation 1:M
+
+Note: draftAndPublish is enabled (Strapi 5 default) on every content type.
+Frontend queries that expect a single canonical record don't need to worry
+about this for now — nothing in this project currently uses draft/publish
+workflows deliberately, so treat every fetched entity as "live."
+
+D.2 — REST Endpoint Conventions
+--------------------------------------------------------------------------------
+Standard Strapi REST CRUD is available for every content type above at
+/api/<plural-kebab-name> (e.g. /api/jobs, /api/skilled-profiles,
+/api/escrow-transactions). Standard query params apply: filters[...],
+populate=..., sort=..., pagination[page]/[pageSize], fields=[...].
+
+Auth endpoints (users-permissions plugin, standard):
+  POST /api/auth/local
+  POST /api/auth/local/register
+  GET  /api/users/me
+
+D.3 — Custom Endpoints
+--------------------------------------------------------------------------------
+
+POST /api/users/me/location
+  Auth: required
+  Body: { latitude: number, longitude: number }
+  Behavior: reverse-geocodes server-side (Google Geocoding API) and stores
+  ONLY the resolved city on user.native_last_city. Raw coordinates are
+  never persisted or returned in the response — this is a deliberate
+  privacy design constraint from the original blueprint (GPS privacy /
+  city-level only). The RN wrapper calls this after reading device GPS;
+  the Next.js web app never needs to call it directly.
+  Response: { success: true, native_last_city: string }
+
+GET /api/jobs/:id/rank-bids
+  Auth: required (job owner typically)
+  Behavior: returns the job's bids sorted by proximity to target_city
+  (skipped if job.scope === 'FOR_EVERYONE') → trust_score_yes descending →
+  profile_completion_skilled descending. This is the algorithm from the
+  original blueprint's rankBids() TypeScript sketch, now a real endpoint.
+  Response: { success: true, data: Bid[] }  (each Bid populated with user)
+
+POST /api/escrow-transactions/:id/release
+  Auth: required, must be the job's owner
+  Behavior: moves the held/funded amount into the assigned worker's
+  Wallet.balance, marks the transaction 'released', and the job
+  'completed' with escrow_status 'released' + completed_at stamped.
+  Response: { success: true, data: { released: true, walletId, amount } }
+
+D.4 — Business Rules Enforced Server-Side (lifecycles — not just UI validation)
+--------------------------------------------------------------------------------
+These live in src/api/<type>/content-types/<type>/lifecycles.ts. The
+frontend MUST treat their error responses as authoritative — never assume
+a client-side check alone is sufficient, always surface the server's
+rejection message inline (e.g. in BidTicket).
+
+  Bid.beforeCreate
+    - Rejects bids on a job that isn't status='open'
+    - Rejects self-bids (user === job.owner)
+    - International bid (job.owner.country !== bidder.country): must be
+      >= $5.00 USD (proposed_amount_usd)
+    - Domestic bid (same country): must be >= job.country.currency.
+      minimum_national_bid (proposed_amount_local)
+    - Error messages are human-readable and safe to show directly in the
+      BidTicket form, e.g.: "Bid rejected. The domestic floor limit for
+      this area is ZK50."
+
+  Bid.beforeUpdate
+    - proposed_amount_local / proposed_amount_usd cannot be changed after
+      creation. Frontend flow: "Withdraw" (status → withdrawn) then submit
+      a new bid, rather than an edit form.
+
+  Review.afterCreate
+    - rating >= 4 increments to_user.trust_score_yes by 1. Frontend should
+      optimistically NOT update trust score locally — refetch the profile
+      after a review is submitted to reflect the true server value.
+
+  VerificationSubmission.afterUpdate
+    - status → 'approved' sets user.is_verified_human = true and stamps
+      reviewed_at. This happens when an admin acts in the Strapi admin
+      panel; frontend should poll GET /api/verification-submissions
+      (filtered to the current user) on the /verify page to detect the
+      change, or refetch /api/users/me on next load.
+
+  Hourly cron (config/cron-tasks.ts)
+    - Any Job with status='in_progress' AND escrow_status='held' AND
+      completion_confirmation_deadline < now gets auto-flagged to
+      status='disputed'. Frontend should render DisputeFlagBanner
+      wherever job.status === 'disputed' and surface a "Contact support"
+      or admin-review messaging path — there is currently no in-app
+      dispute-resolution page, this is handled in the admin panel.
+
+D.5 — Permissions Baseline
+--------------------------------------------------------------------------------
+Set via src/index.ts bootstrap(): the `public` role has read-only access
+(find/findOne) to Currency, Country, and SkillsCatalog only — needed so
+Landing and Onboarding can populate dropdowns before login. Everything else
+(Job, Bid, Wallet, EscrowTransaction, profiles, reviews, messages) is
+restricted to `authenticated` by default; owner-scoped write restrictions
+(e.g. "only the job owner can update their Job") should be configured as
+Strapi policies in the admin panel's Roles UI — the frontend should not
+assume any write is publicly permitted beyond what's listed above, and
+should handle 403 Forbidden responses gracefully (e.g. hide "Edit" buttons
+for non-owners, but always also handle the server rejection as the source
+of truth).
+
+D.6 — Payment Gateway Integration Status
+--------------------------------------------------------------------------------
+Gateway webhook receivers (Paystack / Flutterwave / DPO) are NOT yet wired
+to a live route — this is the one open backend seam pending live gateway
+credentials. When built, expect: POST /api/webhooks/:gateway, which
+verifies the gateway's signature, creates an EscrowTransaction with
+status='funded', and updates the linked Job.escrow_status. The frontend's
+"Post a Job" funding step and "Wallet" withdrawal step should be built
+against this expected shape now, with the actual checkout redirect/SDK
+call per gateway (Paystack Inline, Flutterwave Standard, DPO redirect)
+wired in once the webhook exists.
+
+D.7 — Seed Data (for local frontend development)
+--------------------------------------------------------------------------------
+scripts/seed.js pre-populates:
+  - 7 currencies: ZMW, NGN, KES, GHS, ZAR, UGX, TZS (each with a
+    minimum_national_bid)
+  - 7 countries with cities arrays: Zambia (Lusaka, Ndola, Kitwe,
+    Livingstone, Kabwe), Nigeria (Lagos, Abuja, Ibadan, Port Harcourt,
+    Kano — gig_local_term overridden to "Job"/"Jobs"), Kenya, Ghana,
+    South Africa, Uganda, Tanzania
+  - 15 starter skills across all 6 categories (Plumbing, Electrical
+    Wiring, Carpentry, Welding, Graphic Design, Web Development, Social
+    Media Management, House Cleaning, Childcare, Motorbike Delivery,
+    Truck Driving, Photography, Videography, Accounting, Legal Consulting)
+Run `npm run seed` against a fresh backend before building frontend pages
+that populate dropdowns from this reference data.
+
+the strapi schema is as follows
+
+================================================================================
+FILE: admin/app.example.tsx
+================================================================================
+
+import type { StrapiApp } from '@strapi/strapi/admin';
+
+export default {
+  config: {
+    locales: [
+      // 'ar',
+      // 'fr',
+      // 'cs',
+      // 'de',
+      // 'da',
+      // 'es',
+      // 'he',
+      // 'id',
+      // 'it',
+      // 'ja',
+      // 'ko',
+      // 'ms',
+      // 'nl',
+      // 'no',
+      // 'pl',
+      // 'pt-BR',
+      // 'pt',
+      // 'ru',
+      // 'sk',
+      // 'sv',
+      // 'th',
+      // 'tr',
+      // 'uk',
+      // 'vi',
+      // 'zh-Hans',
+      // 'zh',
+    ],
+  },
+  bootstrap(app: StrapiApp) {
+    console.log(app);
+  },
+};
+
+================================================================================
+FILE: admin/tsconfig.json
+================================================================================
+
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["../plugins/**/admin/src/**/*", "./"],
+  "exclude": ["node_modules/", "build/", "dist/", "**/*.test.ts"]
+}
+
+================================================================================
+FILE: admin/vite.config.example.ts
+================================================================================
+
+import { mergeConfig, type UserConfig } from 'vite';
+
+export default (config: UserConfig) => {
+  // Important: always return the modified config
+  return mergeConfig(config, {
+    resolve: {
+      alias: {
+        '@': '/src',
+      },
+    },
+  });
+};
+
+================================================================================
+FILE: api/bid/content-types/bid/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "bids",
+  "info": {
+    "singularName": "bid",
+    "pluralName": "bids",
+    "displayName": "Bid",
+    "description": "A worker's bid on a job"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "job": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::job.job",
+      "inversedBy": "bids"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "bids"
+    },
+    "proposed_amount_local": {
+      "type": "decimal"
+    },
+    "proposed_amount_usd": {
+      "type": "decimal"
+    },
+    "message": {
+      "type": "text"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "accepted",
+        "rejected",
+        "withdrawn"
+      ],
+      "default": "pending",
+      "required": true
+    }
+  }
+}
+
+================================================================================
+FILE: api/bid/controllers/bid.ts
+================================================================================
+
+/**
+ * bid controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::bid.bid');
+
+================================================================================
+FILE: api/bid/routes/bid.ts
+================================================================================
+
+/**
+ * bid router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::bid.bid');
+
+================================================================================
+FILE: api/bid/services/bid.ts
+================================================================================
+
+/**
+ * bid service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::bid.bid');
+
+================================================================================
+FILE: api/conversation/content-types/conversation/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "conversations",
+  "info": {
+    "singularName": "conversation",
+    "pluralName": "conversations",
+    "displayName": "Conversation",
+    "description": "A per-job message thread between poster and worker"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "job": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::job.job"
+    },
+    "participants": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "messages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::message.message",
+      "mappedBy": "conversation"
+    }
+  }
+}
+
+================================================================================
+FILE: api/conversation/controllers/conversation.ts
+================================================================================
+
+/**
+ * conversation controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::conversation.conversation');
+
+================================================================================
+FILE: api/conversation/routes/conversation.ts
+================================================================================
+
+/**
+ * conversation router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::conversation.conversation');
+
+================================================================================
+FILE: api/conversation/services/conversation.ts
+================================================================================
+
+/**
+ * conversation service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::conversation.conversation');
+
+================================================================================
+FILE: api/country/content-types/country/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "countries",
+  "info": {
+    "singularName": "country",
+    "pluralName": "countries",
+    "displayName": "Country",
+    "description": "Localization + currency + gig terminology per country"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "iso_code": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "maxLength": 2,
+      "minLength": 2,
+      "regex": "^[A-Z]{2}$"
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::currency.currency",
+      "inversedBy": "country"
+    },
+    "cities": {
+      "type": "json",
+      "default": []
+    },
+    "gig_local_term_singular": {
+      "type": "string",
+      "default": "Gig"
+    },
+    "gig_local_term_plural": {
+      "type": "string",
+      "default": "Gigs"
+    },
+    "users": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "country"
+    },
+    "jobs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::job.job",
+      "mappedBy": "country"
+    }
+  }
+}
+
+================================================================================
+FILE: api/country/controllers/country.ts
+================================================================================
+
+/**
+ * country controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::country.country');
+
+================================================================================
+FILE: api/country/routes/country.ts
+================================================================================
+
+/**
+ * country router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::country.country');
+
+================================================================================
+FILE: api/country/services/country.ts
+================================================================================
+
+/**
+ * country service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::country.country');
+
+================================================================================
+FILE: api/currency/content-types/currency/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "currencies",
+  "info": {
+    "singularName": "currency",
+    "pluralName": "currencies",
+    "displayName": "Currency",
+    "description": "ISO currency + national bid floor"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "maxLength": 3,
+      "minLength": 3,
+      "regex": "^[A-Z]{3}$"
+    },
+    "symbol": {
+      "type": "string",
+      "required": true,
+      "maxLength": 8
+    },
+    "minimum_national_bid": {
+      "type": "decimal",
+      "required": true,
+      "default": 0
+    },
+    "country": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::country.country",
+      "mappedBy": "currency"
+    }
+  }
+}
+
+================================================================================
+FILE: api/currency/controllers/currency.ts
+================================================================================
+
+/**
+ * currency controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::currency.currency');
+
+================================================================================
+FILE: api/currency/routes/currency.ts
+================================================================================
+
+/**
+ * currency router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::currency.currency');
+
+================================================================================
+FILE: api/currency/services/currency.ts
+================================================================================
+
+/**
+ * currency service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::currency.currency');
+
+================================================================================
+FILE: api/escrow-transaction/content-types/escrow-transaction/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "escrow_transactions",
+  "info": {
+    "singularName": "escrow-transaction",
+    "pluralName": "escrow-transactions",
+    "displayName": "Escrow Transaction",
+    "description": "Funds held/released for a job"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "job": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::job.job",
+      "inversedBy": "escrow_transactions"
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "gateway": {
+      "type": "enumeration",
+      "enum": [
+        "paystack",
+        "flutterwave",
+        "dpo"
+      ],
+      "required": true
+    },
+    "gateway_ref": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "funded",
+        "held",
+        "released",
+        "refunded",
+        "failed"
+      ],
+      "default": "funded",
+      "required": true
+    }
+  }
+}
+
+================================================================================
+FILE: api/escrow-transaction/controllers/escrow-transaction.ts
+================================================================================
+
+// src/api/escrow-transaction/controllers/escrow-transaction.ts
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::escrow-transaction.escrow-transaction', ({ strapi }) => ({
+    /**
+     * Job-poster-only. Moves held escrow into the assigned worker's Wallet
+     * and closes out the job.
+     */
+    async release(ctx) {
+        try {
+            const { id } = ctx.params;
+            const requester = ctx.state.user;
+
+            const transaction: any = await strapi.db.query('api::escrow-transaction.escrow-transaction').findOne({
+                where: { id },
+                populate: { job: { populate: ['owner', 'assigned_worker'] }, currency: true },
+            });
+
+            if (!transaction) return ctx.notFound('Escrow transaction not found.');
+            if (transaction.status !== 'held' && transaction.status !== 'funded') {
+                return ctx.badRequest(`Transaction is already ${transaction.status}.`);
+            }
+
+            const job = transaction.job;
+            if (!job || !job.owner) return ctx.badRequest('Escrow transaction is not linked to a valid job.');
+            if (requester && job.owner.id !== requester.id) {
+                return ctx.forbidden('Only the job poster can release escrow funds.');
+            }
+            if (!job.assigned_worker) return ctx.badRequest('Job has no assigned worker to release funds to.');
+
+            const workerId = job.assigned_worker.id;
+
+            let wallet: any = await strapi.db.query('api::wallet.wallet').findOne({
+                where: { user: workerId },
+            });
+
+            if (!wallet) {
+                wallet = await strapi.db.query('api::wallet.wallet').create({
+                    data: { user: workerId, balance: 0, pending_balance: 0, currency: transaction.currency?.id },
+                });
+            }
+
+            await strapi.db.query('api::wallet.wallet').update({
+                where: { id: wallet.id },
+                data: { balance: Number(wallet.balance) + Number(transaction.amount) },
+            });
+
+            await strapi.db.query('api::escrow-transaction.escrow-transaction').update({
+                where: { id },
+                data: { status: 'released' },
+            });
+
+            await strapi.db.query('api::job.job').update({
+                where: { id: job.id },
+                data: { status: 'completed', escrow_status: 'released', completed_at: new Date() },
+            });
+
+            ctx.send({
+                success: true,
+                data: { released: true, walletId: wallet.id, amount: transaction.amount },
+            });
+        } catch (error) {
+            strapi.log.error('Error releasing escrow:', error);
+            ctx.internalServerError('Failed to release escrow');
+        }
+    },
+}));
+
+================================================================================
+FILE: api/escrow-transaction/routes/01-custom-routes.ts
+================================================================================
+
+// src/api/escrow-transaction/routes/01-custom-routes.ts
+
+export default {
+    routes: [
+        {
+            method: 'POST',
+            path: '/escrow-transactions/:id/release',
+            handler: 'escrow-transaction.release',
+            config: { policies: [], middlewares: [] },
+        },
+    ],
+};
+
+================================================================================
+FILE: api/escrow-transaction/routes/escrow-transaction.ts
+================================================================================
+
+/**
+ * escrow-transaction router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::escrow-transaction.escrow-transaction');
+
+================================================================================
+FILE: api/escrow-transaction/services/escrow-transaction.ts
+================================================================================
+
+/**
+ * escrow-transaction service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::escrow-transaction.escrow-transaction');
+
+================================================================================
+FILE: api/job/content-types/job/lifecycles.ts
+================================================================================
+
+// src/api/bid/content-types/bid/lifecycles.ts
+
+const FIXED_USD_MIN = 5.0;
+
+function extractId(relation: any): number | null {
+    if (relation === null || relation === undefined) return null;
+    if (typeof relation === 'number') return relation;
+    if (typeof relation === 'string') return Number(relation);
+    if (relation.id) return relation.id;
+    if (Array.isArray(relation.connect) && relation.connect[0]) {
+        return relation.connect[0].id ?? relation.connect[0];
+    }
+    return null;
+}
+
+export default {
+    /**
+     * Enforces the national vs. international bid floor:
+     *   - International (job owner country !== bidder country): min $5.00 USD
+     *   - Domestic: min = country.currency.minimum_national_bid (local currency)
+     * Also blocks bids on closed jobs and self-bids.
+     */
+    async beforeCreate(event: any) {
+        const { data } = event.params;
+
+        const jobId = extractId(data.job);
+        const userId = extractId(data.user);
+
+        if (!jobId || !userId) {
+            throw new Error('A bid requires both a job and a user.');
+        }
+
+        const job: any = await strapi.db.query('api::job.job').findOne({
+            where: { id: jobId },
+            populate: { owner: { populate: ['country'] }, country: { populate: ['currency'] } },
+        });
+
+        if (!job) throw new Error('Cannot bid on a job that does not exist.');
+        if (job.status !== 'open') throw new Error('This job is no longer accepting bids.');
+
+        const bidder: any = await strapi.db.query('plugin::users-permissions.user').findOne({
+            where: { id: userId },
+            populate: ['country'],
+        });
+
+        if (!bidder) throw new Error('Bidder account could not be resolved.');
+        if (job.owner && job.owner.id === bidder.id) {
+            throw new Error('You cannot bid on your own job.');
+        }
+
+        const ownerCountryId = job.owner?.country?.id ?? null;
+        const bidderCountryId = bidder.country?.id ?? null;
+        const isInternational = ownerCountryId !== bidderCountryId;
+
+        if (isInternational) {
+            const proposedUsd = Number(data.proposed_amount_usd);
+            if (!proposedUsd || proposedUsd < FIXED_USD_MIN) {
+                throw new Error(
+                    `International bids must meet the minimum fallback rate of $${FIXED_USD_MIN.toFixed(2)} USD.`
+                );
+            }
+        } else {
+            const domesticMin = job.country?.currency ? Number(job.country.currency.minimum_national_bid) : 0;
+            const proposedLocal = Number(data.proposed_amount_local);
+            const symbol = job.country?.currency ? job.country.currency.symbol : '';
+
+            if (!proposedLocal || proposedLocal < domesticMin) {
+                throw new Error(`Bid rejected. The domestic floor limit for this area is ${symbol}${domesticMin}.`);
+            }
+        }
+    },
+
+    /**
+     * Bid amounts are immutable once submitted — withdraw and re-bid instead
+     * of editing, so the floor-check above can't be bypassed via update.
+     */
+    async beforeUpdate(event: any) {
+        const { data } = event.params;
+        if (data && (data.proposed_amount_local !== undefined || data.proposed_amount_usd !== undefined)) {
+            throw new Error('Bid amounts cannot be edited after submission. Withdraw and re-bid instead.');
+        }
+    },
+};
+
+================================================================================
+FILE: api/job/content-types/job/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "jobs",
+  "info": {
+    "singularName": "job",
+    "pluralName": "jobs",
+    "displayName": "Job",
+    "description": "A posted gig / job"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "richtext",
+      "required": true
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "posted_jobs"
+    },
+    "country": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::country.country",
+      "inversedBy": "jobs"
+    },
+    "target_city": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "enumeration",
+      "enum": [
+        "LOCAL",
+        "FOR_EVERYONE"
+      ],
+      "default": "LOCAL",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "open",
+        "in_progress",
+        "completed",
+        "disputed",
+        "cancelled"
+      ],
+      "default": "open",
+      "required": true
+    },
+    "budget_currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    },
+    "budget_amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "escrow_status": {
+      "type": "enumeration",
+      "enum": [
+        "unfunded",
+        "funded",
+        "held",
+        "released",
+        "refunded"
+      ],
+      "default": "unfunded"
+    },
+    "skills_required": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::skills-catalog.skills-catalog"
+    },
+    "bids": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::bid.bid",
+      "mappedBy": "job"
+    },
+    "escrow_transactions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::escrow-transaction.escrow-transaction",
+      "mappedBy": "job"
+    },
+    "assigned_worker": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "completed_at": {
+      "type": "datetime"
+    },
+    "completion_confirmation_deadline": {
+      "type": "datetime"
+    }
+  }
+}
+
+================================================================================
+FILE: api/job/controllers/job.ts
+================================================================================
+
+// src/api/job/controllers/job.ts
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::job.job', ({ strapi }) => ({
+    /**
+     * Returns a job's bids sorted by:
+     *   1. Proximity to target_city (skipped when scope === 'FOR_EVERYONE')
+     *   2. trust_score_yes (descending)
+     *   3. profile_completion_skilled (descending)
+     */
+    async rankBids(ctx) {
+        try {
+            const { id } = ctx.params;
+
+            const job: any = await strapi.db.query('api::job.job').findOne({
+                where: { id },
+                populate: { bids: { populate: ['user'] } },
+            });
+
+            if (!job) return ctx.notFound('Job not found');
+
+            const isGlobal = job.scope === 'FOR_EVERYONE';
+
+            const ranked = [...(job.bids || [])].sort((a: any, b: any) => {
+                if (!isGlobal) {
+                    const proximityA = a.user?.native_last_city === job.target_city ? 0 : 1;
+                    const proximityB = b.user?.native_last_city === job.target_city ? 0 : 1;
+                    if (proximityA !== proximityB) return proximityA - proximityB;
+                }
+
+                const trustA = a.user?.trust_score_yes || 0;
+                const trustB = b.user?.trust_score_yes || 0;
+                if (trustB !== trustA) return trustB - trustA;
+
+                const completionA = a.user?.profile_completion_skilled || 0;
+                const completionB = b.user?.profile_completion_skilled || 0;
+                return completionB - completionA;
+            });
+
+            ctx.send({ success: true, data: ranked });
+        } catch (error) {
+            strapi.log.error('Error ranking bids:', error);
+            ctx.internalServerError('Failed to rank bids');
+        }
+    },
+}));
+
+================================================================================
+FILE: api/job/routes/01-custom-routes.ts
+================================================================================
+
+// src/api/job/routes/01-custom-routes.ts
+
+export default {
+    routes: [
+        {
+            method: 'GET',
+            path: '/jobs/:id/rank-bids',
+            handler: 'job.rankBids',
+            config: { policies: [], middlewares: [] },
+        },
+    ],
+};
+
+================================================================================
+FILE: api/job/routes/job.ts
+================================================================================
+
+/**
+ * job router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::job.job');
+
+================================================================================
+FILE: api/job/services/job.ts
+================================================================================
+
+/**
+ * job service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::job.job');
+
+================================================================================
+FILE: api/message/content-types/message/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "messages",
+  "info": {
+    "singularName": "message",
+    "pluralName": "messages",
+    "displayName": "Message",
+    "description": "A single chat message within a job conversation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "conversation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::conversation.conversation",
+      "inversedBy": "messages"
+    },
+    "sender": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "body": {
+      "type": "text",
+      "required": true
+    },
+    "read_at": {
+      "type": "datetime"
+    }
+  }
+}
+
+================================================================================
+FILE: api/message/controllers/message.ts
+================================================================================
+
+/**
+ * message controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::message.message');
+
+================================================================================
+FILE: api/message/routes/message.ts
+================================================================================
+
+/**
+ * message router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::message.message');
+
+================================================================================
+FILE: api/message/services/message.ts
+================================================================================
+
+/**
+ * message service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::message.message');
+
+================================================================================
+FILE: api/professional-profile/content-types/professional-profile/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "professional_profiles",
+  "info": {
+    "singularName": "professional-profile",
+    "pluralName": "professional-profiles",
+    "displayName": "Professional Profile",
+    "description": "White-collar / professional services worker profile"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "resume_file": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "files"
+      ]
+    },
+    "education_history": {
+      "type": "json",
+      "default": []
+    },
+    "certifications": {
+      "type": "component",
+      "repeatable": true,
+      "component": "profile.certification"
+    },
+    "experience_summary": {
+      "type": "text"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "professional_profile"
+    }
+  }
+}
+
+================================================================================
+FILE: api/professional-profile/controllers/professional-profile.ts
+================================================================================
+
+/**
+ * professional-profile controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::professional-profile.professional-profile');
+
+================================================================================
+FILE: api/professional-profile/routes/professional-profile.ts
+================================================================================
+
+/**
+ * professional-profile router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::professional-profile.professional-profile');
+
+================================================================================
+FILE: api/professional-profile/services/professional-profile.ts
+================================================================================
+
+/**
+ * professional-profile service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::professional-profile.professional-profile');
+
+================================================================================
+FILE: api/review/content-types/review/lifecycles.ts
+================================================================================
+
+// src/api/review/content-types/review/lifecycles.ts
+
+export default {
+    /**
+     * A 4-5 star review increments the recipient's trust_score_yes, which
+     * feeds directly into the job.rankBids proximity/trust sort algorithm.
+     */
+    async afterCreate(event: any) {
+        const { result } = event;
+
+        const rating = result?.rating;
+        if (!rating || rating < 4) return;
+
+        const review: any = await strapi.db.query('api::review.review').findOne({
+            where: { id: result.id },
+            populate: ['to_user'],
+        });
+
+        const toUserId = review?.to_user?.id;
+        if (!toUserId) return;
+
+        const user: any = await strapi.db.query('plugin::users-permissions.user').findOne({
+            where: { id: toUserId },
+        });
+        if (!user) return;
+
+        await strapi.db.query('plugin::users-permissions.user').update({
+            where: { id: toUserId },
+            data: { trust_score_yes: (user.trust_score_yes || 0) + 1 },
+        });
+    },
+};
+
+================================================================================
+FILE: api/review/content-types/review/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "reviews",
+  "info": {
+    "singularName": "review",
+    "pluralName": "reviews",
+    "displayName": "Review",
+    "description": "Post-job rating feeding trust_score_yes"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "job": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::job.job"
+    },
+    "from_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "to_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "rating": {
+      "type": "integer",
+      "required": true,
+      "min": 1,
+      "max": 5
+    },
+    "comment": {
+      "type": "text"
+    }
+  }
+}
+
+================================================================================
+FILE: api/review/controllers/review.ts
+================================================================================
+
+/**
+ * review controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::review.review');
+
+================================================================================
+FILE: api/review/routes/review.ts
+================================================================================
+
+/**
+ * review router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::review.review');
+
+================================================================================
+FILE: api/review/services/review.ts
+================================================================================
+
+/**
+ * review service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::review.review');
+
+================================================================================
+FILE: api/skilled-profile/content-types/skilled-profile/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "skilled_profiles",
+  "info": {
+    "singularName": "skilled-profile",
+    "pluralName": "skilled-profiles",
+    "displayName": "Skilled Profile",
+    "description": "Blue-collar / manual trades / digital services worker profile"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "national_id_number": {
+      "type": "string",
+      "required": true,
+      "private": true
+    },
+    "skills_category": {
+      "type": "enumeration",
+      "enum": [
+        "Manual Trades",
+        "Digital Services",
+        "Domestic Services",
+        "Transport & Logistics",
+        "Creative & Media",
+        "Professional Services"
+      ],
+      "required": true
+    },
+    "skills": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::skills-catalog.skills-catalog",
+      "inversedBy": "skilled_profiles"
+    },
+    "description": {
+      "type": "text"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "skilled_profile"
+    }
+  }
+}
+
+================================================================================
+FILE: api/skilled-profile/controllers/skilled-profile.ts
+================================================================================
+
+/**
+ * skilled-profile controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::skilled-profile.skilled-profile');
+
+================================================================================
+FILE: api/skilled-profile/routes/skilled-profile.ts
+================================================================================
+
+/**
+ * skilled-profile router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::skilled-profile.skilled-profile');
+
+================================================================================
+FILE: api/skilled-profile/services/skilled-profile.ts
+================================================================================
+
+/**
+ * skilled-profile service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::skilled-profile.skilled-profile');
+
+================================================================================
+FILE: api/skills-catalog/content-types/skills-catalog/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "skills_catalog",
+  "info": {
+    "singularName": "skills-catalog",
+    "pluralName": "skills-catalogs",
+    "displayName": "Skill",
+    "description": "Master catalog of skills"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "Manual Trades",
+        "Digital Services",
+        "Domestic Services",
+        "Transport & Logistics",
+        "Creative & Media",
+        "Professional Services"
+      ],
+      "required": true
+    },
+    "icon": {
+      "type": "string"
+    },
+    "skilled_profiles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::skilled-profile.skilled-profile",
+      "mappedBy": "skills"
+    }
+  }
+}
+
+================================================================================
+FILE: api/skills-catalog/controllers/skills-catalog.ts
+================================================================================
+
+/**
+ * skills-catalog controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::skills-catalog.skills-catalog');
+
+================================================================================
+FILE: api/skills-catalog/routes/skills-catalog.ts
+================================================================================
+
+/**
+ * skills-catalog router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::skills-catalog.skills-catalog');
+
+================================================================================
+FILE: api/skills-catalog/services/skills-catalog.ts
+================================================================================
+
+/**
+ * skills-catalog service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::skills-catalog.skills-catalog');
+
+================================================================================
+FILE: api/verification-submission/content-types/verification-submission/lifecycles.ts
+================================================================================
+
+
+================================================================================
+FILE: api/verification-submission/content-types/verification-submission/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "verification_submissions",
+  "info": {
+    "singularName": "verification-submission",
+    "pluralName": "verification-submissions",
+    "displayName": "Verification Submission",
+    "description": "Scripted video-selfie ID verification review queue"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "verification_submissions"
+    },
+    "video": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "videos"
+      ]
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending",
+      "required": true
+    },
+    "reviewer_notes": {
+      "type": "text"
+    },
+    "reviewed_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "admin::user"
+    },
+    "reviewed_at": {
+      "type": "datetime"
+    }
+  }
+}
+
+================================================================================
+FILE: api/verification-submission/controllers/verification-submission.ts
+================================================================================
+
+/**
+ * verification-submission controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::verification-submission.verification-submission');
+
+================================================================================
+FILE: api/verification-submission/routes/verification-submission.ts
+================================================================================
+
+/**
+ * verification-submission router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::verification-submission.verification-submission');
+
+================================================================================
+FILE: api/verification-submission/services/verification-submission.ts
+================================================================================
+
+/**
+ * verification-submission service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::verification-submission.verification-submission');
+
+================================================================================
+FILE: api/wallet/content-types/wallet/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "wallets",
+  "info": {
+    "singularName": "wallet",
+    "pluralName": "wallets",
+    "displayName": "Wallet",
+    "description": "Withdrawable balance per user"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "wallet"
+    },
+    "balance": {
+      "type": "decimal",
+      "default": 0,
+      "required": true
+    },
+    "pending_balance": {
+      "type": "decimal",
+      "default": 0,
+      "required": true
+    },
+    "currency": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::currency.currency"
+    }
+  }
+}
+
+================================================================================
+FILE: api/wallet/controllers/wallet.ts
+================================================================================
+
+/**
+ * wallet controller
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreController('api::wallet.wallet');
+
+================================================================================
+FILE: api/wallet/routes/wallet.ts
+================================================================================
+
+/**
+ * wallet router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::wallet.wallet');
+
+================================================================================
+FILE: api/wallet/services/wallet.ts
+================================================================================
+
+/**
+ * wallet service
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreService('api::wallet.wallet');
+
+================================================================================
+FILE: code_collection.js
+================================================================================
+
+const fs = require('fs');
+const path = require('path');
+const { promisify } = require('util');
+
+// Promisify fs functions for async/await usage
+const readdir = promisify(fs.readdir);
+const stat = promisify(fs.stat);
+const readFile = promisify(fs.readFile);
+const writeFile = promisify(fs.writeFile);
+
+// ============================================
+// CONFIGURATION - Customize these as needed
+// ============================================
+
+// Directories to ignore (by name - anywhere in the tree)
+const IGNORED_DIRECTORIES = [
+    'node_modules',
+    '.git',
+    '.vscode',
+    '.idea',
+    'dist',
+    'build',
+    'public',
+    'coverage',
+    '.next',
+    '.strapi',
+    '.nuxt',
+    '.cache',
+    '.DS_Store'
+];
+
+// Specific directory paths to ignore (relative to root)
+const IGNORED_DIRECTORY_PATHS = [
+    'app/(auth)',
+    'components/Map',
+    'components/Rider',
+    'lib/api',
+    'app/(main)',
+    'app/finding-driver',
+    'app/trip-summary'
+];
+
+// Files to ignore (by filename - anywhere in the tree)
+const IGNORED_FILES = [
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    '.gitignore',
+    '.env',
+    '.env.local',
+    '.env.development',
+    '.env.production',
+    'code.txt',
+    'code.min.txt',
+    'Thumbs.db',
+    'desktop.ini',
+    'collect-code.js'  // This script itself
+];
+
+// Specific file paths to ignore (relative to root)
+const IGNORED_FILE_PATHS = [
+    'lib/hooks/useAuth.js',
+    'lib/hooks/useRide.js',
+    'app/page.js'
+];
+
+// File extensions to ignore
+const IGNORED_FILE_EXTENSIONS = [
+    '.log', '.tmp', '.temp', '.bak', '.swp', '.swo',
+    '.pid', '.seed', '.pem', '.cert', '.key',
+    '.zip', '.rar', '.7z', '.gz', '.tar',
+    '.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg',
+    '.mp3', '.mp4', '.avi', '.mov', '.wmv',
+    '.exe', '.dll', '.so', '.dylib',
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx'
+];
+
+// Custom ignored items - Add your own here
+const CUSTOM_IGNORED_FILES = [
+    // 'secrets.json',
+    // 'private.key'
+];
+
+const CUSTOM_IGNORED_PATHS = [
+    // 'app/specific-folder/specific-file.js'
+];
+
+// Combine all ignored files
+const ALL_IGNORED_FILES = [...IGNORED_FILES, ...CUSTOM_IGNORED_FILES];
+const ALL_IGNORED_FILE_PATHS = [...IGNORED_FILE_PATHS, ...CUSTOM_IGNORED_PATHS];
+
+// Output file configuration
+const OUTPUT_FILE = path.join(process.cwd(), 'code.txt');
+const OUTPUT_MIN_FILE = path.join(process.cwd(), 'code.min.txt');
+
+// Statistics tracking
+let stats = {
+    processed: 0,
+    skipped: 0,
+    errors: 0
+};
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Get normalized relative path from root directory
+ */
+function getRelativePath(filePath) {
+    const relative = path.relative(process.cwd(), filePath);
+    return relative ? relative.replace(/\\/g, '/') : '.';
+}
+
+/**
+ * Check if a directory should be ignored
+ */
+function shouldIgnoreDirectory(dirPath) {
+    const relativePath = getRelativePath(dirPath);
+    const dirName = path.basename(dirPath);
+
+    // Check by directory name (global)
+    if (IGNORED_DIRECTORIES.includes(dirName)) {
+        return true;
+    }
+
+    // Check exact directory path
+    if (IGNORED_DIRECTORY_PATHS.includes(relativePath)) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Check if a file should be ignored
+ */
+function shouldIgnoreFile(fileName, filePath) {
+    const relativePath = getRelativePath(filePath);
+    const ext = path.extname(fileName).toLowerCase();
+
+    // Check by filename
+    if (ALL_IGNORED_FILES.includes(fileName)) {
+        return true;
+    }
+
+    // Check by extension
+    if (IGNORED_FILE_EXTENSIONS.includes(ext)) {
+        return true;
+    }
+
+    // Check exact file path
+    if (ALL_IGNORED_FILE_PATHS.includes(relativePath)) {
+        return true;
+    }
+
+    // Check if file is in an ignored directory
+    const fileDir = path.dirname(relativePath);
+    if (IGNORED_DIRECTORY_PATHS.includes(fileDir)) {
+        return true;
+    }
+
+    // Check hidden files (except allowed ones)
+    if (fileName.startsWith('.') && !fileName.startsWith('.env')) {
+        const allowedHidden = ['.eslintrc', '.prettierrc', '.babelrc', '.npmrc'];
+        if (!allowedHidden.some(allowed => fileName.startsWith(allowed))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Recursively traverse directory and collect all non-ignored files
+ */
+async function traverseDirectory(dirPath) {
+    const files = [];
+
+    // Skip if this directory should be ignored
+    if (shouldIgnoreDirectory(dirPath)) {
+        console.log(`  ⏭️  Skipping directory: ${getRelativePath(dirPath)}`);
+        stats.skipped++;
+        return files;
+    }
+
+    try {
+        const items = await readdir(dirPath);
+
+        for (const item of items) {
+            const fullPath = path.join(dirPath, item);
+
+            try {
+                const fileStat = await stat(fullPath);
+
+                if (fileStat.isDirectory()) {
+                    const subFiles = await traverseDirectory(fullPath);
+                    files.push(...subFiles);
+                } else if (fileStat.isFile()) {
+                    if (!shouldIgnoreFile(item, fullPath)) {
+                        files.push(fullPath);
+                    } else {
+                        console.log(`  ⏭️  Skipping file: ${getRelativePath(fullPath)}`);
+                        stats.skipped++;
+                    }
+                }
+            } catch (err) {
+                console.error(`  ❌ Error accessing ${fullPath}: ${err.message}`);
+                stats.errors++;
+            }
+        }
+    } catch (err) {
+        console.error(`  ❌ Error reading directory ${dirPath}: ${err.message}`);
+        stats.errors++;
+    }
+
+    return files;
+}
+
+/**
+ * Read file content with encoding detection
+ */
+async function readFileContent(filePath) {
+    try {
+        const buffer = await readFile(filePath);
+
+        // Try UTF-8 first
+        try {
+            return buffer.toString('utf8');
+        } catch (err) {
+            // Fallback to latin1 for binary files
+            return `[BINARY FILE]\n${buffer.toString('base64')}\n[/BINARY FILE]`;
+        }
+    } catch (err) {
+        console.error(`  ❌ Error reading file: ${err.message}`);
+        stats.errors++;
+        return `[ERROR: ${err.message}]`;
+    }
+}
+
+/**
+ * Format file size for display
+ */
+function formatFileSize(bytes) {
+    if (bytes < 1024) return `${bytes} bytes`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+/**
+ * Display configuration summary
+ */
+function displayConfig() {
+    console.log('\n⚙️  Configuration:');
+    console.log(`  • Ignored directories (by name): ${IGNORED_DIRECTORIES.length}`);
+    console.log(`  • Ignored directory paths: ${IGNORED_DIRECTORY_PATHS.length}`);
+    console.log(`  • Ignored files (by name): ${ALL_IGNORED_FILES.length}`);
+    console.log(`  • Ignored file paths: ${ALL_IGNORED_FILE_PATHS.length}`);
+    console.log(`  • Ignored extensions: ${IGNORED_FILE_EXTENSIONS.length}`);
+
+    if (IGNORED_DIRECTORY_PATHS.length > 0) {
+        console.log('\n  📁 Ignored directories:');
+        IGNORED_DIRECTORY_PATHS.forEach(dir => console.log(`    - ${dir}`));
+    }
+
+    if (ALL_IGNORED_FILE_PATHS.length > 0) {
+        console.log('\n  📄 Ignored files:');
+        ALL_IGNORED_FILE_PATHS.forEach(file => console.log(`    - ${file}`));
+    }
+}
+
+// ============================================
+// MAIN FUNCTIONS
+// ============================================
+
+/**
+ * Create the complete source code document
+ */
+async function createCodeDocument() {
+    console.log('\n📂 Scanning directory:', process.cwd());
+    console.log('🔍 Gathering files...\n');
+
+    const allFiles = await traverseDirectory(process.cwd());
+
+    if (allFiles.length === 0) {
+        console.log('❌ No files found to process!');
+        return null;
+    }
+
+    console.log(`\n📊 Found ${allFiles.length} files to process\n`);
+
+    let outputContent = '';
+
+    // Process each file
+    for (let i = 0; i < allFiles.length; i++) {
+        const filePath = allFiles[i];
+        const relativePath = getRelativePath(filePath);
+
+        console.log(`📝 Processing (${i + 1}/${allFiles.length}): ${relativePath}`);
+
+        // Add file header with path
+        outputContent += `\n${'='.repeat(80)}\n`;
+        outputContent += `FILE: ${relativePath}\n`;
+        outputContent += `${'='.repeat(80)}\n\n`;
+
+        // Add file content
+        const content = await readFileContent(filePath);
+        outputContent += content;
+
+        // Ensure trailing newline
+        if (content && !content.endsWith('\n')) {
+            outputContent += '\n';
+        }
+
+        stats.processed++;
+    }
+
+    // Write to file
+    try {
+        await writeFile(OUTPUT_FILE, outputContent, 'utf8');
+        console.log(`\n✅ Created: ${OUTPUT_FILE}`);
+        console.log(`📏 Size: ${formatFileSize(outputContent.length)}`);
+        return outputContent;
+    } catch (err) {
+        console.error(`❌ Error writing file: ${err.message}`);
+        return null;
+    }
+}
+
+/**
+ * Create minified version (remove all whitespace)
+ */
+async function createMinifiedVersion(sourceContent) {
+    if (!sourceContent) {
+        console.log('❌ No source content to minify');
+        return false;
+    }
+
+    console.log('\n⚡ Creating minified version...');
+
+    try {
+        // Remove all whitespace
+        const minified = sourceContent.replace(/\s/g, '');
+
+        await writeFile(OUTPUT_MIN_FILE, minified, 'utf8');
+        console.log(`✅ Created: ${OUTPUT_MIN_FILE}`);
+        console.log(`📏 Size: ${formatFileSize(minified.length)}`);
+
+        const reduction = ((1 - minified.length / sourceContent.length) * 100).toFixed(2);
+        console.log(`📉 Reduction: ${reduction}%`);
+
+        return true;
+    } catch (err) {
+        console.error(`❌ Error creating minified file: ${err.message}`);
+        return false;
+    }
+}
+
+/**
+ * Display final summary
+ */
+function displaySummary() {
+    console.log('\n' + '='.repeat(50));
+    console.log('📊 SUMMARY');
+    console.log('='.repeat(50));
+    console.log(`✅ Files processed: ${stats.processed}`);
+    console.log(`⏭️  Files/directories skipped: ${stats.skipped}`);
+    console.log(`❌ Errors encountered: ${stats.errors}`);
+    console.log(`📁 Output files:`);
+    console.log(`   - ${path.basename(OUTPUT_FILE)}`);
+    console.log(`   - ${path.basename(OUTPUT_MIN_FILE)}`);
+    console.log('\n🎉 Done!');
+}
+
+// ============================================
+// SCRIPT ENTRY POINT
+// ============================================
+
+async function main() {
+    console.log('🔍 Source Code Collector');
+    console.log('='.repeat(50));
+
+    displayConfig();
+
+    try {
+        const sourceContent = await createCodeDocument();
+
+        if (!sourceContent) {
+            console.log('❌ Failed to create code document');
+            return;
+        }
+
+        await createMinifiedVersion(sourceContent);
+        displaySummary();
+
+    } catch (error) {
+        console.error('💥 Unexpected error:', error.message);
+        if (error.stack) console.error(error.stack);
+    }
+}
+
+// Run the script
+main();
+
+================================================================================
+FILE: components/profile/certification.json
+================================================================================
+
+{
+  "collectionName": "components_profile_certifications",
+  "info": {
+    "displayName": "Certification",
+    "icon": "award"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "issuing_body": {
+      "type": "string"
+    },
+    "issue_date": {
+      "type": "date"
+    },
+    "expiry_date": {
+      "type": "date"
+    },
+    "credential_url": {
+      "type": "string"
+    }
+  }
+}
+
+================================================================================
+FILE: extensions/users-permissions/content-types/user/schema.json
+================================================================================
+
+{
+  "kind": "collectionType",
+  "collectionName": "up_users",
+  "info": {
+    "name": "user",
+    "description": "",
+    "singularName": "user",
+    "pluralName": "users",
+    "displayName": "User"
+  },
+  "options": {
+    "draftAndPublish": false,
+    "timestamps": true
+  },
+  "attributes": {
+    "username": {
+      "type": "string",
+      "minLength": 3,
+      "unique": true,
+      "configurable": false,
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "minLength": 6,
+      "configurable": false,
+      "required": true
+    },
+    "provider": {
+      "type": "string",
+      "configurable": false
+    },
+    "password": {
+      "type": "password",
+      "minLength": 6,
+      "configurable": false,
+      "private": true,
+      "searchable": false
+    },
+    "resetPasswordToken": {
+      "type": "string",
+      "configurable": false,
+      "private": true,
+      "searchable": false
+    },
+    "confirmationToken": {
+      "type": "string",
+      "configurable": false,
+      "private": true,
+      "searchable": false
+    },
+    "confirmed": {
+      "type": "boolean",
+      "default": false,
+      "configurable": false
+    },
+    "blocked": {
+      "type": "boolean",
+      "default": false,
+      "configurable": false
+    },
+    "role": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.role",
+      "inversedBy": "users",
+      "configurable": false
+    },
+    "is_anonymous": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_verified_human": {
+      "type": "boolean",
+      "default": false
+    },
+    "profile_completion_skilled": {
+      "type": "integer",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    "profile_completion_professional": {
+      "type": "integer",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    "trust_score_yes": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "native_last_city": {
+      "type": "string"
+    },
+    "country": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::country.country",
+      "inversedBy": "users"
+    },
+    "skilled_profile": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::skilled-profile.skilled-profile",
+      "mappedBy": "user"
+    },
+    "professional_profile": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::professional-profile.professional-profile",
+      "mappedBy": "user"
+    },
+    "wallet": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::wallet.wallet",
+      "mappedBy": "user"
+    },
+    "posted_jobs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::job.job",
+      "mappedBy": "owner"
+    },
+    "bids": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::bid.bid",
+      "mappedBy": "user"
+    },
+    "verification_submissions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::verification-submission.verification-submission",
+      "mappedBy": "user"
+    }
+  }
+}
+
+================================================================================
+FILE: extensions/users-permissions/strapi-server.ts
+================================================================================
+
+// src/extensions/users-permissions/strapi-server.ts
+
+/**
+ * Adds POST /api/users/me/location. The RN wrapper posts raw
+ * { latitude, longitude }; the server reverse-geocodes and stores ONLY
+ * the resolved city (native_last_city). Raw coordinates are never
+ * persisted or returned
+ */
+export default (plugin: any) => {
+  plugin.controllers.user.updateMyLocation = async (ctx: any) => {
+    try {
+      const user = ctx.state.user;
+      if (!user) return ctx.unauthorized('You must be logged in to update location.');
+
+      const { latitude, longitude } = ctx.request.body || {};
+      if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+        return ctx.badRequest('latitude and longitude (numbers) are required.');
+      }
+
+      const apiKey = process.env.GOOGLE_GEOCODING_API_KEY;
+      if (!apiKey) {
+        strapi.log.error('GOOGLE_GEOCODING_API_KEY is not configured.');
+        return ctx.internalServerError('Location service is not configured.');
+      }
+
+      let resolvedCity: string | null = null;
+      try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&result_type=locality&key=${apiKey}`;
+        const response = await fetch(url);
+        const geo: any = await response.json();
+        const localityComponent = geo?.results?.[0]?.address_components?.find((c: any) =>
+          c.types.includes('locality')
+        );
+        resolvedCity = localityComponent ? localityComponent.long_name : null;
+      } catch (err) {
+        strapi.log.error('Reverse geocoding failed', err);
+        return ctx.internalServerError('Could not resolve location.');
+      }
+
+      if (!resolvedCity) return ctx.badRequest('Could not resolve a city for the given coordinates.');
+
+      const updated: any = await strapi.db.query('plugin::users-permissions.user').update({
+        where: { id: user.id },
+        data: { native_last_city: resolvedCity },
+      });
+
+      ctx.send({ success: true, native_last_city: updated.native_last_city });
+    } catch (error) {
+      strapi.log.error('Error updating user location:', error);
+      ctx.internalServerError('Failed to update user location');
+    }
+  };
+
+  plugin.routes['content-api'].routes.push({
+    method: 'POST',
+    path: '/users/me/location',
+    handler: 'user.updateMyLocation',
+    config: { policies: [], middlewares: [], prefix: '' },
+  });
+
+  return plugin;
+};
+
+================================================================================
+FILE: index.ts
+================================================================================
+
+// import type { Core } from '@strapi/strapi';
+
+export default {
+  /**
+   * An asynchronous register function that runs before
+   * your application is initialized.
+   *
+   * This gives you an opportunity to extend code.
+   */
+  register(/* { strapi }: { strapi: Core.Strapi } */) {},
+
+  /**
+   * An asynchronous bootstrap function that runs before
+   * your application gets started.
+   *
+   * This gives you an opportunity to set up your data model,
+   * run jobs, or perform some special logic.
+   */
+  bootstrap(/* { strapi }: { strapi: Core.Strapi } */) {},
+};
+
+- build me the full frontend next app, start with the app folder files and the components and the utilities and hooks before you give me the config files, in fact, skip the config files like jsconfig.json, etc
+not typescript, code should be in javacript 
