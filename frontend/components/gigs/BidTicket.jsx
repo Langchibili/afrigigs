@@ -55,6 +55,16 @@ export default function BidTicket({ job, isInternational, onBidPlaced }) {
     }
   }
 
+  // Frontend safety net alongside the server's Bid.beforeCreate self-bid
+  // rejection: never let a job's own poster see a bid form for it.
+  if (user && job.owner?.id === user.id) {
+    return (
+      <Alert severity="info" variant="outlined">
+        You posted this job, so you can't bid on it yourself.
+      </Alert>
+    );
+  }
+
   if (job.status !== "open") {
     return (
       <Alert severity="info" variant="outlined">

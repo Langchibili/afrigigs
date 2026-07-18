@@ -7,14 +7,17 @@
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Box, Button, Typography, Skeleton } from "@mui/material";
+import { Box, Button, Typography, Skeleton, useTheme } from "@mui/material";
 import { motion } from "framer-motion";
 import { ShieldCheck, MapPin, Wallet } from "lucide-react";
 import Container from "@/components/layout/Container";
 import Stack from "@/components/layout/Stack";
 import GridBox from "@/components/layout/GridBox";
 import GigCard from "@/components/gigs/GigCard";
+import SwipeModeBar from "@/components/shared/SwipeModeBar";
 import { JobApi } from "@/lib/endpoints";
+import { useAuth } from "@/lib/auth-context";
+import { useMode } from "@/lib/mode-context";
 
 const FEATURES = [
   {
@@ -36,6 +39,9 @@ const FEATURES = [
 
 export default function LandingPage() {
   const [jobs, setJobs] = useState(null);
+  const { user } = useAuth();
+  const { setMode } = useMode();
+  const theme = useTheme();
 
   useEffect(() => {
     JobApi.list({ status: "open", pageSize: 6 })
@@ -45,12 +51,18 @@ export default function LandingPage() {
 
   return (
     <Box component="main">
+      {/* Swipe mode bar — sits just below the header (NavBar). Lets a
+          signed-out or signed-in visitor flip between "work" (find work,
+          green) and "hire" (hire someone, orange) mode; the whole app's
+          theme follows this mode. */}
+      <SwipeModeBar />
+
       {/* Hero */}
       <Box
         sx={{
           backgroundImage: (t) => t.custom.gradients.heroVignette,
           borderBottom: (t) => `1px solid ${t.palette.divider}`,
-          pt: { xs: 8, md: 12 },
+          pt: { xs: 4, md: 8 },
           pb: { xs: 8, md: 10 },
         }}
       >
@@ -66,12 +78,32 @@ export default function LandingPage() {
               posters — escrow-backed, privacy-safe, built for how work actually happens here.
             </Typography>
             <Stack gap={1.5}>
-              <Button component={Link} href="/onboarding" variant="contained" size="large">
-                Get started free
-              </Button>
-              <Button component={Link} href="/gigs" variant="outlined" size="large">
-                Browse gigs
-              </Button>
+              {!user ? (
+                <>
+                  <Button
+                    component={Link}
+                    href="/register?intent=hire"
+                    variant="contained"
+                    size="large"
+                    onClick={() => setMode("hire")}
+                  >
+                    Hire Someone
+                  </Button>
+                  <Button
+                    component={Link}
+                    href="/register?intent=work"
+                    variant="outlined"
+                    size="large"
+                    onClick={() => setMode("work")}
+                  >
+                    Find work
+                  </Button>
+                </>
+              ) : (
+                <Button component={Link} href="/dashboard" variant="contained" size="large">
+                  Go to dashboard
+                </Button>
+              )}
             </Stack>
           </Stack>
         </Container>
@@ -82,7 +114,7 @@ export default function LandingPage() {
         <GridBox columns={{ xs: 1, sm: 3 }} gap={3}>
           {FEATURES.map(({ icon: Icon, title, body }) => (
             <Stack key={title} direction="column" gap={1.25} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${t.palette.divider}` }}>
-              <Icon size={22} color="#00BFA6" />
+              <Icon size={22} color={theme.palette.primary.main} />
               <Typography variant="h3">{title}</Typography>
               <Typography variant="body2" color="text.secondary">
                 {body}

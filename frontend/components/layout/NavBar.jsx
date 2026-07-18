@@ -21,12 +21,14 @@ import { Menu, Briefcase, Wallet, MessageCircle, User as UserIcon } from "lucide
 import Stack from "./Stack";
 import Container from "./Container";
 import { useAuth } from "@/lib/auth-context";
+import { useMode } from "@/lib/mode-context";
 import WalletBalanceChip from "@/components/wallet/WalletBalanceChip";
 import VerifiedTag from "@/components/shared/VerifiedTag";
 import { initials } from "@/lib/format";
 
 export default function NavBar() {
   const { user, logout } = useAuth();
+  const { mode } = useMode();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -51,17 +53,18 @@ export default function NavBar() {
           </Link>
 
           <Stack align="center" gap={2.5} sx={{ display: { xs: "none", md: "flex" }, flexGrow: 1 }}>
-            <Link href="/gigs" style={navLinkStyle}>
-              Browse Gigs
-            </Link>
-            {user && (
-              <Link href="/dashboard" style={navLinkStyle}>
-                Dashboard
+            {mode === "hire" ? (
+              <Link href="/gigs/new" style={navLinkStyle}>
+                Post a Job
+              </Link>
+            ) : (
+              <Link href="/gigs" style={navLinkStyle}>
+                Browse Gigs
               </Link>
             )}
             {user && (
-              <Link href="/gigs/new" style={navLinkStyle}>
-                Post a Job
+              <Link href="/dashboard" style={navLinkStyle}>
+                Dashboard
               </Link>
             )}
           </Stack>
@@ -91,8 +94,13 @@ export default function NavBar() {
                 <Button component={Link} href="/login" color="inherit">
                   Log in
                 </Button>
-                <Button component={Link} href="/onboarding" variant="contained" color="primary">
-                  Get started
+                <Button
+                  component={Link}
+                  href={`/register?intent=${mode}`}
+                  variant="contained"
+                  color="primary"
+                >
+                  {mode === "hire" ? "Hire Someone" : "Find work"}
                 </Button>
               </>
             )}
@@ -129,8 +137,8 @@ export default function NavBar() {
               <Button component={Link} href="/login" color="inherit">
                 Log in
               </Button>
-              <Button component={Link} href="/onboarding" variant="contained">
-                Get started
+              <Button component={Link} href={`/register?intent=${mode}`} variant="contained">
+                {mode === "hire" ? "Hire Someone" : "Find work"}
               </Button>
             </>
           )}

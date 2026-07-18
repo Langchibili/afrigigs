@@ -1,6 +1,7 @@
 import { Inter, Space_Grotesk } from "next/font/google";
 import Providers from "./providers";
 import NavBar from "@/components/layout/NavBar";
+import BottomNav from "@/components/layout/BottomNav";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -19,6 +20,7 @@ export default function RootLayout({ children }) {
         <Providers>
           <NavBar />
           {children}
+          <BottomNav />
         </Providers>
       </body>
     </html>

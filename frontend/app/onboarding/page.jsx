@@ -2,9 +2,11 @@
 
 /**
  * app/onboarding/page.jsx — "/onboarding"
- * Implements the blueprint's "Instant Onboarding" flow: register, add
- * country/skills/ID, immediately unlock browse/bid with an Unverified badge.
- * Backend calls: POST /api/auth/local/register, GET /api/countries,
+ * Continues the "Instant Onboarding" flow after account creation, which
+ * now happens on /register. This page requires an authenticated user
+ * (guarded via useRequireAuth) and walks them through country, profile
+ * type, skills, and ID so they can immediately unlock browse/bid with an
+ * Unverified badge. Backend calls: GET /api/countries,
  * GET /api/skills-catalogs, POST /api/skilled-profiles or
  * /api/professional-profiles, PUT /api/users/:id
  */
@@ -25,22 +27,19 @@ import Container from "@/components/layout/Container";
 import Stack from "@/components/layout/Stack";
 import OnboardingStepper from "@/components/shared/OnboardingStepper";
 import VerifiedTag from "@/components/shared/VerifiedTag";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { CountryApi, ProfileApi, SkillsApi } from "@/lib/endpoints";
 
-const STEPS = ["Account", "Country", "Profile type", "Skills", "ID", "Done"];
+const STEPS = ["Country", "Profile type", "Skills", "ID", "Done"];
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { register, user } = useAuth();
+  const { user } = useRequireAuth();
   const [step, setStep] = useState(0);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
-    username: "",
-    email: "",
-    password: "",
     countryId: "",
     profileType: "skilled",
     skillsCategory: "Manual Trades",
@@ -64,42 +63,25 @@ export default function OnboardingPage() {
     setError(null);
 
     if (step === 0) {
-      if (!form.username || !form.email || form.password.length < 6) {
-        setError("Please fill in a username, email, and a password of at least 6 characters.");
-        return;
-      }
-      setSubmitting(true);
-      try {
-        await register(form.username, form.email, form.password);
-        setStep(1);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setSubmitting(false);
-      }
+      if (!form.countryId) return setError("Select your country.");
+      setStep(1);
       return;
     }
 
     if (step === 1) {
-      if (!form.countryId) return setError("Select your country.");
       setStep(2);
       return;
     }
 
     if (step === 2) {
+      if (form.profileType === "skilled" && form.skillIds.length === 0) {
+        return setError("Select at least one skill.");
+      }
       setStep(3);
       return;
     }
 
     if (step === 3) {
-      if (form.profileType === "skilled" && form.skillIds.length === 0) {
-        return setError("Select at least one skill.");
-      }
-      setStep(4);
-      return;
-    }
-
-    if (step === 4) {
       if (form.profileType === "skilled" && !form.nationalId) {
         return setError("An ID number is required to unlock matches.");
       }
@@ -116,7 +98,7 @@ export default function OnboardingPage() {
         } else {
           await ProfileApi.createProfessional({ user: user.id });
         }
-        setStep(5);
+        setStep(4);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -125,10 +107,12 @@ export default function OnboardingPage() {
     }
   }
 
+  if (!user) return null;
+
   return (
     <Container maxWidth="sm" sx={{ py: { xs: 5, md: 8 } }}>
       <Typography variant="h1" sx={{ mb: 3, fontSize: 28 }}>
-        Create your account
+        Set up your worker profile
       </Typography>
       <OnboardingStepper steps={STEPS} activeIndex={step} />
 
@@ -139,25 +123,6 @@ export default function OnboardingPage() {
       )}
 
       {step === 0 && (
-        <Stack direction="column" gap={2}>
-          <TextField label="Username" value={form.username} onChange={(e) => update("username", e.target.value)} />
-          <TextField
-            label="Email"
-            type="email"
-            value={form.email}
-            onChange={(e) => update("email", e.target.value)}
-          />
-          <TextField
-            label="Password"
-            type="password"
-            value={form.password}
-            onChange={(e) => update("password", e.target.value)}
-            helperText="At least 6 characters"
-          />
-        </Stack>
-      )}
-
-      {step === 1 && (
         <TextField select label="Country" fullWidth value={form.countryId} onChange={(e) => update("countryId", e.target.value)}>
           {countries.map((c) => (
             <MenuItem key={c.id} value={c.id}>
@@ -167,7 +132,7 @@ export default function OnboardingPage() {
         </TextField>
       )}
 
-      {step === 2 && (
+      {step === 1 && (
         <Stack direction="column" gap={1.5}>
           <Typography variant="body2" color="text.secondary">
             Skilled covers manual trades &amp; digital services. Professional covers white-collar
@@ -185,7 +150,7 @@ export default function OnboardingPage() {
         </Stack>
       )}
 
-      {step === 3 && form.profileType === "skilled" && (
+      {step === 2 && form.profileType === "skilled" && (
         <Stack direction="column" gap={2}>
           <TextField
             select
@@ -228,13 +193,13 @@ export default function OnboardingPage() {
           </Stack>
         </Stack>
       )}
-      {step === 3 && form.profileType === "professional" && (
+      {step === 2 && form.profileType === "professional" && (
         <Typography color="text.secondary">
           You can add your resume, education, and certifications after this — let's get you browsing first.
         </Typography>
       )}
 
-      {step === 4 && (
+      {step === 3 && (
         <Stack direction="column" gap={2}>
           {form.profileType === "skilled" ? (
             <TextField
@@ -249,7 +214,7 @@ export default function OnboardingPage() {
         </Stack>
       )}
 
-      {step === 5 && (
+      {step === 4 && (
         <Stack direction="column" gap={2} align="flex-start">
           <VerifiedTag verified={false} />
           <Typography color="text.secondary">
@@ -267,10 +232,10 @@ export default function OnboardingPage() {
         </Stack>
       )}
 
-      {step < 5 && (
+      {step < 4 && (
         <Box sx={{ mt: 3 }}>
           <Button variant="contained" onClick={handleNext} disabled={submitting}>
-            {submitting ? "Please wait…" : step === 4 ? "Finish" : "Continue"}
+            {submitting ? "Please wait…" : step === 3 ? "Finish" : "Continue"}
           </Button>
         </Box>
       )}

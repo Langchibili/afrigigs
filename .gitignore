@@ -44,7 +44,7 @@
 
 # # Secrets
 # Secrets.js
-
+*.zip
 
 backend/node_modules
 backend/src-old

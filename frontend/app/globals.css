@@ -6,6 +6,13 @@ body {
   color: #f5f5f5;
 }
 
+/* Reserve space so the fixed mobile BottomNav never covers page content */
+@media (max-width: 899.95px) {
+  body {
+    padding-bottom: 64px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
