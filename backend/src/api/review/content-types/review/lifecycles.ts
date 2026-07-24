@@ -1,15 +1,14 @@
 // src/api/review/content-types/review/lifecycles.ts
 
+import { getSettings } from '../../../../services/settingsService';
+
 export default {
-    /**
-     * A 4-5 star review increments the recipient's trust_score_yes, which
-     * feeds directly into the job.rankBids proximity/trust sort algorithm.
-     */
     async afterCreate(event: any) {
         const { result } = event;
+        const settings = await getSettings();
 
         const rating = result?.rating;
-        if (!rating || rating < 4) return;
+        if (!rating || rating < settings.review_positive_threshold) return;
 
         const review: any = await strapi.db.query('api::review.review').findOne({
             where: { id: result.id },

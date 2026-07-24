@@ -33,7 +33,7 @@
     "message": {
       "type": "text"
     },
-    "status": {
+    "bid_status": {
       "type": "enumeration",
       "enum": [
         "pending",

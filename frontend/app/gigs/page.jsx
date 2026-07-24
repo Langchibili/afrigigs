@@ -58,6 +58,9 @@ export default function BrowseGigsPage() {
     setSkillIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]));
   }
 
+  useEffect(() => {
+    console.log('jobs', jobs)
+  }, [jobs])
   return (
     <Container sx={{ py: { xs: 4, md: 6 } }}>
       <Typography variant="h1" sx={{ mb: 3, fontSize: 28 }}>

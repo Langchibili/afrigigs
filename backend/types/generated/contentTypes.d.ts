@@ -441,6 +441,97 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAdmnSettingAdmnSetting extends Struct.SingleTypeSchema {
+  collectionName: 'admn_settings';
+  info: {
+    displayName: 'admn_settings';
+    pluralName: 'admn-settings';
+    singularName: 'admn-setting';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    app_min_supported_version: Schema.Attribute.String;
+    bid_withdrawal_allowed: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    default_currency: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::currency.currency'
+    >;
+    escrow_auto_dispute_hours: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<72>;
+    exchange_rate_cache_hours: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<12>;
+    force_update: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::admn-setting.admn-setting'
+    > &
+      Schema.Attribute.Private;
+    maintenance_message: Schema.Attribute.Text &
+      Schema.Attribute.DefaultTo<'AfriGigs is currently undergoing scheduled maintenance. Please check back shortly.'>;
+    maintenance_mode: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    max_active_bids_per_user: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<20>;
+    min_bid_amount_usd: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<1>;
+    min_job_amount_usd: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<2>;
+    platform_fee_percentage: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<10>;
+    publishedAt: Schema.Attribute.DateTime;
+    require_verification_to_bid: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    require_verification_to_post_job: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    review_positive_threshold: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 5;
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<4>;
+    support_email: Schema.Attribute.Email;
+    support_phone: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiBidBid extends Struct.CollectionTypeSchema {
   collectionName: 'bids';
   info: {
@@ -453,6 +544,11 @@ export interface ApiBidBid extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    bid_status: Schema.Attribute.Enumeration<
+      ['pending', 'accepted', 'rejected', 'withdrawn']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -464,11 +560,6 @@ export interface ApiBidBid extends Struct.CollectionTypeSchema {
     proposed_amount_local: Schema.Attribute.Decimal;
     proposed_amount_usd: Schema.Attribute.Decimal;
     publishedAt: Schema.Attribute.DateTime;
-    status: Schema.Attribute.Enumeration<
-      ['pending', 'accepted', 'rejected', 'withdrawn']
-    > &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'pending'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -658,7 +749,7 @@ export interface ApiJobJob extends Struct.CollectionTypeSchema {
     singularName: 'job';
   };
   options: {
-    draftAndPublish: false;
+    draftAndPublish: true;
   };
   attributes: {
     assigned_worker: Schema.Attribute.Relation<
@@ -686,6 +777,11 @@ export interface ApiJobJob extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::escrow-transaction.escrow-transaction'
     >;
+    job_status: Schema.Attribute.Enumeration<
+      ['open', 'in_progress', 'completed', 'disputed', 'cancelled']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'open'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::job.job'> &
       Schema.Attribute.Private;
@@ -701,11 +797,6 @@ export interface ApiJobJob extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::skills-catalog.skills-catalog'
     >;
-    status: Schema.Attribute.Enumeration<
-      ['open', 'in_progress', 'completed', 'disputed', 'cancelled']
-    > &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'open'>;
     target_city: Schema.Attribute.String;
     title: Schema.Attribute.String &
       Schema.Attribute.Required &
@@ -966,9 +1057,6 @@ export interface ApiVerificationSubmissionVerificationSubmission
     reviewed_at: Schema.Attribute.DateTime;
     reviewed_by: Schema.Attribute.Relation<'manyToOne', 'admin::user'>;
     reviewer_notes: Schema.Attribute.Text;
-    status: Schema.Attribute.Enumeration<['pending', 'approved', 'rejected']> &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'pending'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -976,6 +1064,11 @@ export interface ApiVerificationSubmissionVerificationSubmission
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+    verification_status: Schema.Attribute.Enumeration<
+      ['pending', 'approved', 'rejected']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
     video: Schema.Attribute.Media<'videos'>;
   };
 }
@@ -1576,6 +1669,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::admn-setting.admn-setting': ApiAdmnSettingAdmnSetting;
       'api::bid.bid': ApiBidBid;
       'api::conversation.conversation': ApiConversationConversation;
       'api::country.country': ApiCountryCountry;

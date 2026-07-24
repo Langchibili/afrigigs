@@ -24,7 +24,7 @@
 
 //   const load = useCallback(() => {
 //     if (!user) return;
-//     WalletApi.transactionsForOwner(user.id).then((r) => setTransactions(r.data ?? []));
+//     WalletApi.myTransactions().then((r) => setTransactions(r.data ?? []));
 //   }, [user]);
 
 //   useEffect(load, [load]);
@@ -171,7 +171,7 @@ export default function WalletPage() {
       ) : (
         <Stack direction="column" gap={0}>
           {transactions.map((tx, i) => (
-            <div key={tx.id}>
+            <div key={tx.documentId}>
               <Stack justify="space-between" align="center" wrap="wrap" sx={{ py: 2 }}>
                 <Stack direction="column" gap={0.25}>
                   <Typography variant="body1" sx={{ fontWeight: 600 }}>
@@ -190,10 +190,10 @@ export default function WalletPage() {
                     <Button
                       size="small"
                       variant="contained"
-                      disabled={releasingId === tx.id}
-                      onClick={() => handleRelease(tx.id)}
+                      disabled={releasingId === tx.documentId}
+                      onClick={() => handleRelease(tx.documentId)}
                     >
-                      {releasingId === tx.id ? "Releasing…" : "Release funds"}
+                      {releasingId === tx.documentId ? "Releasing…" : "Release funds"}
                     </Button>
                   )}
                 </Stack>

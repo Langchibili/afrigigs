@@ -8,7 +8,7 @@ export default {
     async afterUpdate(event: any) {
         const { result, params } = event;
 
-        const newStatus = params?.data?.status;
+        const newStatus = params?.data?.verification_status;
         if (newStatus !== 'approved') return;
 
         const submission: any = await strapi.db

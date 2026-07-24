@@ -20,7 +20,7 @@
 
 //   useEffect(() => {
 //     if (!user) return;
-//     MessagingApi.listConversations(user.id).then((r) => setConversations(r.data ?? []));
+//     MessagingApi.mine().then((r) => setConversations(r.data ?? []));
 //   }, [user]);
 
 //   if (!user) return null;
@@ -122,15 +122,15 @@ export default function MessagesListPage() {
       ) : (
         <Stack direction="column" gap={0}>
           {conversations.map((conv, i) => {
-            const otherPerson = (conv.participants ?? []).find((p) => p.id !== user.id);
+            const otherPerson = (conv.participants ?? []).find((p) => p.documentId !== user.documentId);
             const lastMessage = conv.messages?.[conv.messages.length - 1];
             const unreadCount = (conv.messages ?? []).filter(
-              (m) => !m.read_at && m.sender?.id !== user.id
+              (m) => !m.read_at && m.sender?.documentId !== user.documentId
             ).length;
 
             return (
-              <div key={conv.id}>
-                <Link href={`/messages/${conv.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+              <div key={conv.documentId}>
+                <Link href={`/messages/${conv.documentId}`} style={{ textDecoration: "none", color: "inherit" }}>
                   <Stack align="center" gap={1.5} sx={{ py: 2 }}>
                     <Badge badgeContent={unreadCount} color="primary">
                       <Avatar sx={{ bgcolor: "primary.dark" }}>{initials(otherPerson?.username)}</Avatar>

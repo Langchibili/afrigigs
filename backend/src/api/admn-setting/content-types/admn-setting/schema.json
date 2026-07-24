@@ -1,0 +1,88 @@
+{
+  "kind": "singleType",
+  "collectionName": "admn_settings",
+  "info": {
+    "singularName": "admn-setting",
+    "pluralName": "admn-settings",
+    "displayName": "admn_settings"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "min_bid_amount_usd": {
+      "type": "decimal",
+      "default": 1.0
+    },
+    "min_job_amount_usd": {
+      "type": "decimal",
+      "default": 2.0
+    },
+    "platform_fee_percentage": {
+      "type": "decimal",
+      "default": 10.0,
+      "min": 0,
+      "max": 100
+    },
+    "escrow_auto_dispute_hours": {
+      "type": "integer",
+      "default": 72,
+      "min": 1
+    },
+    "require_verification_to_bid": {
+      "type": "boolean",
+      "default": false
+    },
+    "require_verification_to_post_job": {
+      "type": "boolean",
+      "default": false
+    },
+    "max_active_bids_per_user": {
+      "type": "integer",
+      "default": 20,
+      "min": 1
+    },
+    "bid_withdrawal_allowed": {
+      "type": "boolean",
+      "default": true
+    },
+    "review_positive_threshold": {
+      "type": "integer",
+      "default": 4,
+      "min": 1,
+      "max": 5
+    },
+    "exchange_rate_cache_hours": {
+      "type": "integer",
+      "default": 12,
+      "min": 1
+    },
+    "maintenance_mode": {
+      "type": "boolean",
+      "default": false
+    },
+    "maintenance_message": {
+      "type": "text",
+      "default": "AfriGigs is currently undergoing scheduled maintenance. Please check back shortly."
+    },
+    "support_email": {
+      "type": "email"
+    },
+    "support_phone": {
+      "type": "string"
+    },
+    "app_min_supported_version": {
+      "type": "string"
+    },
+    "force_update": {
+      "type": "boolean",
+      "default": false
+    },
+    "default_currency": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::currency.currency"
+    }
+  }
+}
