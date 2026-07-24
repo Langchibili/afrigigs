@@ -53,7 +53,7 @@ export default {
         }
 
         const activeBidCount = await strapi.db.query('api::bid.bid').count({
-            where: { user: userId, status: 'pending' },
+            where: { user: userId, bid_status: 'pending' },
         });
         if (activeBidCount >= settings.max_active_bids_per_user) {
             throw new Error(
@@ -96,7 +96,7 @@ export default {
 
                 if (!proposedUsd || proposedUsd < settings.min_bid_amount_usd) {
                     throw new Error(
-                        `International bids must meet the minimum fallback rate of $${settings.min_bid_amount_usd.toFixed(2)} USD.`
+                        `International bids must meet the minimum rate of $${settings.min_bid_amount_usd.toFixed(2)} USD. Your amount is $${proposedUsd} after conversion`
                     );
                 }
             } else {
@@ -136,7 +136,7 @@ export default {
             throw new Error('Bid amounts cannot be edited after submission. Withdraw and re-bid instead.');
         }
 
-        if (data?.status === 'withdrawn' && !settings.bid_withdrawal_allowed) {
+        if (data?.bid_status === 'withdrawn' && !settings.bid_withdrawal_allowed) {
             throw new Error('Bid withdrawals are currently disabled. Please contact support.');
         }
     },

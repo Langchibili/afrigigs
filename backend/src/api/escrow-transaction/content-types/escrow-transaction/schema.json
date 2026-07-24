@@ -41,7 +41,7 @@
       "required": true,
       "unique": true
     },
-    "status": {
+    "escrow_transaction_status": {
       "type": "enumeration",
       "enum": [
         "funded",

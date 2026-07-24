@@ -716,6 +716,11 @@ export interface ApiEscrowTransactionEscrowTransaction
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     currency: Schema.Attribute.Relation<'manyToOne', 'api::currency.currency'>;
+    escrow_transaction_status: Schema.Attribute.Enumeration<
+      ['funded', 'held', 'released', 'refunded', 'failed']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'funded'>;
     gateway: Schema.Attribute.Enumeration<['paystack', 'flutterwave', 'dpo']> &
       Schema.Attribute.Required;
     gateway_ref: Schema.Attribute.String &
@@ -729,11 +734,6 @@ export interface ApiEscrowTransactionEscrowTransaction
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
-    status: Schema.Attribute.Enumeration<
-      ['funded', 'held', 'released', 'refunded', 'failed']
-    > &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'funded'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
